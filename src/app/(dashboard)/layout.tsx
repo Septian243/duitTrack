@@ -31,8 +31,9 @@ export default async function DashboardLayout({
                 <Link href="/transactions">Transaksi</Link>
                 <Link href="/budgets">Budget</Link>
                 <Link href="/cashflow">Cash Flow</Link>
-                <Link href="/settings/categories">Categories</Link>
                 <Link href="/settings">Settings</Link>
+                <Link href="/settings/categories">Categories</Link>
+                <Link href="/settings/tags">Tag</Link>
                 <form action={signOut} style={{ marginLeft: 'auto' }}>
                     <button type="submit">Keluar</button>
                 </form>
