@@ -12,21 +12,30 @@ type Category = {
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
+    const [reloadKey, setReloadKey] = useState(0);
     const [name, setName] = useState('');
     const [type, setType] = useState<'income' | 'expense'>('expense');
     const [error, setError] = useState<string | null>(null);
 
-    async function loadCategories() {
-        setLoading(true);
-        const res = await fetch('/api/categories');
-        const data = await res.json();
-        setCategories(data);
-        setLoading(false);
-    }
-
     useEffect(() => {
+        let ignore = false;
+
+        async function loadCategories() {
+            setLoading(true);
+            const res = await fetch('/api/categories');
+            const data = await res.json();
+            if (!ignore) {
+                setCategories(data);
+                setLoading(false);
+            }
+        }
+
         loadCategories();
-    }, []);
+
+        return () => {
+            ignore = true;
+        };
+    }, [reloadKey]);
 
     async function handleAdd(e: React.FormEvent) {
         e.preventDefault();
@@ -42,13 +51,13 @@ export default function CategoriesPage() {
             return;
         }
         setName('');
-        loadCategories();
+        setReloadKey((k) => k + 1);
     }
 
     async function handleDelete(id: string) {
         if (!confirm('Hapus kategori ini?')) return;
         await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-        loadCategories();
+        setReloadKey((k) => k + 1);
     }
 
     if (loading) return <p>Memuat...</p>;
