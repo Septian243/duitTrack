@@ -8,6 +8,7 @@ function formatRupiah(n: number) {
 }
 
 export async function POST(request: Request) {
+    // Validasi request memang dari Telegram, bukan sembarang orang
     const secretHeader = request.headers.get('x-telegram-bot-api-secret-token');
     if (secretHeader !== process.env.TELEGRAM_WEBHOOK_SECRET) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     const message = update.message;
 
     if (!message || !message.text) {
-        return NextResponse.json({ ok: true });
+        return NextResponse.json({ ok: true }); // abaikan update non-teks
     }
 
     const chatId: number = message.chat.id;
@@ -76,6 +77,29 @@ export async function POST(request: Request) {
             chatId,
             'Akun kamu belum terhubung. Buka Settings di web DuitTrack untuk mendapatkan kode, lalu kirim: /start <kode>'
         );
+        return NextResponse.json({ ok: true });
+    }
+
+    // --- Handle /batal ---
+    if (text === '/batal') {
+        const { data: lastTx } = await service
+            .from('transactions')
+            .select('id, amount, type')
+            .eq('user_id', profile.id)
+            .eq('source', 'telegram')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (!lastTx) {
+            await sendTelegramMessage(chatId, 'Tidak ada transaksi dari Telegram yang bisa dibatalkan.');
+            return NextResponse.json({ ok: true });
+        }
+
+        await service.from('transactions').delete().eq('id', lastTx.id);
+
+        const label = lastTx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+        await sendTelegramMessage(chatId, `🗑️ Dibatalkan: ${label} ${formatRupiah(lastTx.amount)}`);
         return NextResponse.json({ ok: true });
     }
 
