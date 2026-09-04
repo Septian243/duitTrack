@@ -9,22 +9,25 @@ const ThemeContext = createContext<{
     toggleTheme: () => void;
 } | null>(null);
 
+function getInitialTheme(): Theme {
+    if (typeof window === 'undefined') return 'light';
+    const saved = localStorage.getItem('duittrack-theme') as Theme | null;
+    return saved ?? 'light';
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setTheme] = useState<Theme>('light');
+    const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
     useEffect(() => {
-        const saved = localStorage.getItem('duittrack-theme') as Theme | null;
-        if (saved) {
-            setTheme(saved);
-            document.documentElement.classList.toggle('dark', saved === 'dark');
-        }
-    }, []);
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+    }, [theme]);
 
     function toggleTheme() {
-        const next = theme === 'light' ? 'dark' : 'light';
-        setTheme(next);
-        document.documentElement.classList.toggle('dark', next === 'dark');
-        localStorage.setItem('duittrack-theme', next);
+        setTheme((prev) => {
+            const next: Theme = prev === 'light' ? 'dark' : 'light';
+            localStorage.setItem('duittrack-theme', next);
+            return next;
+        });
     }
 
     return (
