@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkBudgetAlerts } from '@/lib/budget/checkBudgetAlerts';
 
 export async function GET(request: Request) {
     const supabase = await createClient();
@@ -72,6 +73,15 @@ export async function POST(request: Request) {
         if (tagError) {
             return NextResponse.json({ error: tagError.message }, { status: 500 });
         }
+    }
+
+    if (transaction.type === 'expense') {
+        await checkBudgetAlerts(supabase, {
+            userId: user.id,
+            categoryId: transaction.category_id,
+            amount: Number(transaction.amount),
+            transactionDate: transaction.transaction_date,
+        });
     }
 
     return NextResponse.json(transaction, { status: 201 });

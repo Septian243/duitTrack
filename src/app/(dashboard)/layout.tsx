@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { signOut } from '@/lib/supabase/actions';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 
 export default async function DashboardLayout({
     children,
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
                 <Link href="/settings">Settings</Link>
                 <Link href="/settings/categories">Categories</Link>
                 <Link href="/settings/tags">Tag</Link>
+                <ThemeToggleButton />
                 <form action={signOut} style={{ marginLeft: 'auto' }}>
                     <button type="submit">Keluar</button>
                 </form>

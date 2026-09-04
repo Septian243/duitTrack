@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { sendTelegramMessage } from '@/lib/telegram/sendMessage';
 import { parseTransaction } from '@/lib/parser/parseTransaction';
+import { checkBudgetAlerts } from '@/lib/budget/checkBudgetAlerts';
 
 function formatRupiah(n: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
 }
 
 export async function POST(request: Request) {
-    // Validasi request memang dari Telegram, bukan sembarang orang
     const secretHeader = request.headers.get('x-telegram-bot-api-secret-token');
     if (secretHeader !== process.env.TELEGRAM_WEBHOOK_SECRET) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const message = update.message;
 
     if (!message || !message.text) {
-        return NextResponse.json({ ok: true }); // abaikan update non-teks
+        return NextResponse.json({ ok: true });
     }
 
     const chatId: number = message.chat.id;
@@ -103,6 +103,57 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
     }
 
+    // --- Handle /budget ---
+    if (text === '/budget') {
+        const now = new Date();
+        const periodMonth = `${now.toISOString().slice(0, 7)}-01`;
+        const endDateObj = new Date(periodMonth);
+        endDateObj.setMonth(endDateObj.getMonth() + 1);
+        const endDate = endDateObj.toISOString().slice(0, 10);
+
+        const { data: budgets } = await service
+            .from('budgets')
+            .select('*, categories(name)')
+            .eq('user_id', profile.id)
+            .eq('period_month', periodMonth);
+
+        if (!budgets || budgets.length === 0) {
+            await sendTelegramMessage(
+                chatId,
+                'Belum ada budget yang diset bulan ini. Buka Settings > Budget di web untuk menambahkan.'
+            );
+            return NextResponse.json({ ok: true });
+        }
+
+        const { data: transactions } = await service
+            .from('transactions')
+            .select('amount, category_id')
+            .eq('user_id', profile.id)
+            .eq('type', 'expense')
+            .gte('transaction_date', periodMonth)
+            .lt('transaction_date', endDate);
+
+        const spentByCategory: Record<string, number> = {};
+        let spentTotal = 0;
+        for (const tx of transactions ?? []) {
+            spentTotal += Number(tx.amount);
+            if (tx.category_id) {
+                spentByCategory[tx.category_id] = (spentByCategory[tx.category_id] ?? 0) + Number(tx.amount);
+            }
+        }
+
+        const lines = budgets.map((b) => {
+            const spent = b.category_id ? (spentByCategory[b.category_id] ?? 0) : spentTotal;
+            const pct = Math.round((spent / b.amount) * 100);
+            const icon = pct >= 100 ? '🔴' : pct >= 80 ? '🟡' : '🟢';
+            const label = b.categories?.name ?? 'Keseluruhan';
+            return `${icon} ${label}: ${formatRupiah(spent)} / ${formatRupiah(b.amount)} (${pct}%)`;
+        });
+
+        await sendTelegramMessage(chatId, `📊 Status Budget Bulan Ini:\n\n${lines.join('\n')}`);
+        return NextResponse.json({ ok: true });
+    }
+
     // --- Parsing transaksi dari teks bebas ---
     const parsed = parseTransaction(text);
 
@@ -135,6 +186,15 @@ export async function POST(request: Request) {
     if (insertError) {
         await sendTelegramMessage(chatId, '❌ Gagal menyimpan transaksi, coba lagi.');
         return NextResponse.json({ ok: true });
+    }
+
+    if (parsed.type === 'expense') {
+        await checkBudgetAlerts(service, {
+            userId: profile.id,
+            categoryId: category?.id ?? null,
+            amount: parsed.amount,
+            transactionDate: new Date().toISOString().slice(0, 10),
+        });
     }
 
     const label = parsed.type === 'income' ? 'Pemasukan' : 'Pengeluaran';

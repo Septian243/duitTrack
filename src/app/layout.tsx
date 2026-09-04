@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from '@/context/ThemeContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,6 +13,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const sora = Sora({
+  variable: "--font-sora",
+  subsets: ["latin"],
+  weight: ["500"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+});
+
 export const metadata: Metadata = {
   title: "DuitTrack",
   description: "Aplikasi pencatatan keuangan pribadi",
@@ -20,10 +33,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="id"
+      className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

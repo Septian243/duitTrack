@@ -110,6 +110,16 @@ export default function TransactionsPage() {
         <div>
             <h1>Transaksi</h1>
 
+            <div style={{ marginBottom: 16 }}>
+                <a href="/api/export?format=csv" style={{ marginRight: 12 }}>
+                    Export CSV
+                </a>
+                <a href="/api/export?format=xlsx" style={{ marginRight: 12 }}>
+                    Export Excel
+                </a>
+                <a href="/api/export?format=pdf">Export PDF</a>
+            </div>
+
             <form onSubmit={handleAdd} style={{ marginBottom: 32, maxWidth: 480 }}>
                 <div style={{ marginBottom: 12 }}>
                     <select
