@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { sendTelegramMessage } from '@/lib/telegram/sendMessage';
 import { parseTransaction } from '@/lib/parser/parseTransaction';
 import { checkBudgetAlerts } from '@/lib/budget/checkBudgetAlerts';
+import { getOrGenerateSummary } from '@/lib/ai/getOrGenerateSummary';
 
 function formatRupiah(n: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
@@ -151,6 +152,14 @@ export async function POST(request: Request) {
         });
 
         await sendTelegramMessage(chatId, `📊 Status Budget Bulan Ini:\n\n${lines.join('\n')}`);
+        return NextResponse.json({ ok: true });
+    }
+
+    // --- Handle /ringkasan ---
+    if (text === '/ringkasan') {
+        const month = new Date().toISOString().slice(0, 7);
+        const narrative = await getOrGenerateSummary(service, profile.id, month, true);
+        await sendTelegramMessage(chatId, `📋 ${narrative}`);
         return NextResponse.json({ ok: true });
     }
 
