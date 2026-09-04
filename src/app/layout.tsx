@@ -26,8 +26,13 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DuitTrack",
+  title: "duitTrack",
   description: "Aplikasi pencatatan keuangan pribadi",
+  icons: {
+    icon: "/logo.png?v=2",
+    shortcut: "/logo.png?v=2",
+    apple: "/logo.png?v=2",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
