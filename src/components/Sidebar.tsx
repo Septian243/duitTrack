@@ -32,7 +32,7 @@ const navSections = [
     { label: 'UTAMA', items: navItems.slice(0, 1) },
     { label: 'KEUANGAN', items: [navItems[1], navItems[2], navItems[3]] },
     { label: 'KUSTOMISASI', items: [navItems[4], navItems[5]] },
-    { label: 'AKUN', items: navItems.slice(6) },
+    { label: 'SETTING', items: navItems.slice(6) },
 ];
 
 export default function Sidebar() {
@@ -58,7 +58,7 @@ export default function Sidebar() {
                     <Link
                         href="/"
                         aria-label="Kembali ke Dashboard"
-                    className="flex items-center justify-start gap-2"
+                        className="flex items-center justify-start gap-2"
                     >
                         <Image
                             src="/logo.png"
@@ -138,16 +138,16 @@ export default function Sidebar() {
             )}
 
             {/* Logout */}
-            <div className={`${isMinimized ? 'px-2' : 'px-5'} flex items-center gap-2 py-6 border-t border-gray-100`}>
+            <div className={`${isMinimized ? 'px-2' : 'px-4'} flex items-center gap-2 py-4 border-t border-gray-100`}>
                 <form action={signOut} className="min-w-0 flex-1">
                     <button
                         type="submit"
                         title={isMinimized ? 'Keluar' : undefined}
-                        className={`flex items-center rounded-xl text-base font-medium text-red-500 hover:bg-red-50 transition-colors w-full
-              ${isMinimized ? 'justify-center px-2 py-3.5' : 'gap-4 px-5 py-3.5'}`}
+                        className={`flex w-full items-center rounded-xl text-sm font-medium text-red-500 transition-colors hover:bg-red-50
+              ${isMinimized ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}`}
                     >
-                        <LogOut size={isMinimized ? 21 : 22} />
-                        {!isMinimized && 'LogOut'}
+                        <LogOut size={isMinimized ? 20 : 21} />
+                        {!isMinimized && 'Log Out'}
                     </button>
                 </form>
             </div>
