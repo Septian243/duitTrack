@@ -349,8 +349,8 @@ export default function TopBar({
                                                 <Icon size={14} className="text-gray-500" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium truncate">{n.title}</p>
-                                                <p className="text-xs text-gray-500 truncate">{n.message}</p>
+                                                <p className="break-words text-sm font-medium">{n.title}</p>
+                                                <p className="break-words text-xs text-gray-500">{n.message}</p>
                                                 <p className="text-[11px] text-gray-400 mt-0.5">
                                                     {formatRelativeTime(n.created_at)}
                                                     {n.source === 'telegram' && ' · via Telegram'}
