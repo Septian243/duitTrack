@@ -13,7 +13,7 @@ export async function GET() {
 
     const { data, error } = await supabase
         .from('profiles')
-        .select('name, main_currency, daily_reminder_enabled, daily_reminder_hour')
+        .select('username, main_currency, daily_reminder_enabled, daily_reminder_hour, avatar_url')
         .eq('id', user.id)
         .single();
 
@@ -34,13 +34,14 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { daily_reminder_enabled, daily_reminder_hour, name, main_currency } = body;
+    const { daily_reminder_enabled, daily_reminder_hour, username, main_currency, avatar_url } = body;
 
     const updates: Record<string, unknown> = {};
     if (daily_reminder_enabled !== undefined) updates.daily_reminder_enabled = daily_reminder_enabled;
     if (daily_reminder_hour !== undefined) updates.daily_reminder_hour = daily_reminder_hour;
-    if (name !== undefined) updates.name = name;
+    if (username !== undefined) updates.username = username;
     if (main_currency !== undefined) updates.main_currency = main_currency;
+    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     const { data, error } = await supabase
         .from('profiles')

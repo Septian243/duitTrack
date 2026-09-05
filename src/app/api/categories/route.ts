@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createNotification } from '@/lib/notifications/createNotification';
 
 export async function GET() {
     const supabase = await createClient();
@@ -41,5 +42,14 @@ export async function POST(request: Request) {
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await createNotification(supabase, {
+        userId: user.id,
+        type: 'category',
+        title: 'Kategori Ditambahkan',
+        message: `Kategori "${name}" telah dibuat.`,
+        source: 'web',
+    });
+
     return NextResponse.json(data, { status: 201 });
 }

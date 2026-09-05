@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createNotification } from '@/lib/notifications/createNotification';
 
 export async function DELETE(
     request: Request,
@@ -24,5 +25,14 @@ export async function DELETE(
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await createNotification(supabase, {
+        userId: user.id,
+        type: 'transaction',
+        title: 'Transaksi Dihapus',
+        message: 'Sebuah transaksi telah dihapus dari catatanmu.',
+        source: 'web',
+    });
+
     return NextResponse.json({ success: true });
 }

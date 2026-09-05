@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createNotification } from '@/lib/notifications/createNotification';
 
 export async function PATCH(
     request: Request,
@@ -22,7 +23,7 @@ export async function PATCH(
         .from('categories')
         .update({ name })
         .eq('id', id)
-        .eq('user_id', user.id) // jaga-jaga di level query, RLS sudah handle juga
+        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -55,5 +56,14 @@ export async function DELETE(
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await createNotification(supabase, {
+        userId: user.id,
+        type: 'category',
+        title: 'Kategori Dihapus',
+        message: 'Sebuah kategori telah dihapus.',
+        source: 'web',
+    });
+
     return NextResponse.json({ success: true });
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createNotification } from '@/lib/notifications/createNotification';
 
 export async function GET() {
     const supabase = await createClient();
@@ -35,9 +36,17 @@ export async function POST(request: Request) {
         .single();
 
     if (error) {
-        // unique constraint violation -> tag sudah ada
         const message = error.code === '23505' ? 'Tag sudah ada' : error.message;
         return NextResponse.json({ error: message }, { status: 400 });
     }
+
+    await createNotification(supabase, {
+        userId: user.id,
+        type: 'tag',
+        title: 'Tag Ditambahkan',
+        message: `Tag "${name.trim()}" telah dibuat.`,
+        source: 'web',
+    });
+
     return NextResponse.json(data, { status: 201 });
 }

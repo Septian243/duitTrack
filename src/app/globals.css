@@ -1,9 +1,24 @@
 @import "tailwindcss";
 
+@theme {
+  --animate-fade-slide-in: fade-slide-in 300ms ease-out;
+
+  @keyframes fade-slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --color-bg: #FAF6EF;
+  --color-bg: #ffffff;
   --color-ink: #1B2A22;
   --color-primary: #21A366;
   --color-warning: #F2CC8F;
@@ -12,7 +27,7 @@
 }
 
 .dark {
-  --color-bg: #0F1F17;
+  --color-bg: #ffffff;
   --color-ink: #F5EFE0;
   --color-primary: #2ECC81;
   --color-warning: #F2CC8F;
@@ -28,7 +43,7 @@
 }
 
 body {
-  background: var(--color-bg);
+  background: linear-gradient(135deg, #e8f5e2 0%, #e1f1da 50%, #e8f5e2 100%);
   color: var(--color-ink);
   font-family: var(--font-geist-sans), sans-serif;
   transition: background 0.2s, color 0.2s;

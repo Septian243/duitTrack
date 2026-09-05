@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkBudgetAlerts } from '@/lib/budget/checkBudgetAlerts';
+import { createNotification } from '@/lib/notifications/createNotification';
 
 export async function GET(request: Request) {
     const supabase = await createClient();
@@ -83,6 +84,18 @@ export async function POST(request: Request) {
             transactionDate: transaction.transaction_date,
         });
     }
+
+    function formatRupiah(n: number) {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
+    }
+
+    await createNotification(supabase, {
+        userId: user.id,
+        type: 'transaction',
+        title: transaction.type === 'income' ? 'Pemasukan Ditambahkan' : 'Pengeluaran Ditambahkan',
+        message: `${formatRupiah(Number(transaction.amount))} - ${transaction.note || 'Tanpa catatan'}`,
+        source: 'web',
+    });
 
     return NextResponse.json(transaction, { status: 201 });
 }

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { PasswordStrength } from '@/components/PasswordStrength';
+import PasswordInput from '@/components/PasswordInput';
 
 type Mode = 'signin' | 'signup';
 
@@ -14,6 +15,9 @@ const inputClass =
 const logoClass = 'mb-[-12px]';
 const validationClass = 'w-full text-left text-sm font-medium text-[#E07A5F] mt-2';
 
+const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
+type UsernameStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken';
+
 function getAuthError(message: string) {
     const normalizedMessage = message.toLowerCase();
 
@@ -21,7 +25,7 @@ function getAuthError(message: string) {
         return 'Email belum dikonfirmasi. Silakan cek inbox atau folder spam email kamu.';
     }
     if (normalizedMessage.includes('invalid login credentials')) {
-        return 'Email atau password salah. Silakan periksa kembali.';
+        return 'Username/email atau password salah.';
     }
     if (normalizedMessage.includes('user already registered')) {
         return 'Email ini sudah terdaftar. Silakan login.';
@@ -41,7 +45,8 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
     const isSignUp = mode === 'signup';
 
     // State form Sign Up
-    const [signUpName, setSignUpName] = useState('');
+    const [signUpUsername, setSignUpUsername] = useState('');
+    const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle');
     const [signUpEmail, setSignUpEmail] = useState('');
     const [signUpPassword, setSignUpPassword] = useState('');
     const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
@@ -49,19 +54,53 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
     const [signUpError, setSignUpError] = useState<string | null>(null);
     const [signUpSuccess, setSignUpSuccess] = useState<string | null>(null);
 
-    // State form Sign In
-    const [signInEmail, setSignInEmail] = useState('');
+    // State form Sign In (identifier = username ATAU email)
+    const [signInIdentifier, setSignInIdentifier] = useState('');
     const [signInPassword, setSignInPassword] = useState('');
     const [signInLoading, setSignInLoading] = useState(false);
     const [signInError, setSignInError] = useState<string | null>(null);
+
+    // Cek ketersediaan username - debounce 500ms
+    useEffect(() => {
+        const value = signUpUsername.trim().toLowerCase();
+
+        if (!value || !USERNAME_REGEX.test(value)) return;
+        const timeout = setTimeout(async () => {
+            const { data, error } = await supabase.rpc('is_username_available', {
+                check_username: value,
+            });
+            if (error) {
+                console.error('Gagal cek username:', error);
+                setUsernameStatus('invalid');
+                return;
+            }
+            setUsernameStatus(data ? 'available' : 'taken');
+        }, 500);
+
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [signUpUsername]);
+
+    function handleUsernameChange(value: string) {
+        const normalizedValue = value.toLowerCase();
+        setSignUpUsername(normalizedValue);
+
+        if (!normalizedValue.trim()) {
+            setUsernameStatus('idle');
+        } else if (!USERNAME_REGEX.test(normalizedValue.trim())) {
+            setUsernameStatus('invalid');
+        } else {
+            setUsernameStatus('checking');
+        }
+    }
 
     async function handleSignUp(e: React.FormEvent) {
         e.preventDefault();
         setSignUpError(null);
         setSignUpSuccess(null);
 
-        if (signUpName.trim().length < 2) {
-            setSignUpError('Nama wajib diisi minimal 2 karakter.');
+        if (usernameStatus !== 'available') {
+            setSignUpError('Pastikan username valid dan tersedia sebelum daftar.');
             return;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signUpEmail)) {
@@ -83,7 +122,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
             email: signUpEmail,
             password: signUpPassword,
             options: {
-                data: { name: signUpName },
+                data: { username: signUpUsername.trim().toLowerCase() },
             },
         });
 
@@ -101,8 +140,8 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
         e.preventDefault();
         setSignInError(null);
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signInEmail)) {
-            setSignInError('Masukkan alamat email yang valid.');
+        if (!signInIdentifier.trim()) {
+            setSignInError('Username atau email wajib diisi.');
             return;
         }
         if (!signInPassword) {
@@ -112,8 +151,25 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
 
         setSignInLoading(true);
 
+        let emailToUse = signInIdentifier.trim();
+
+        // Kalau input bukan format email, anggap itu username - cari email-nya lewat RPC aman
+        if (!emailToUse.includes('@')) {
+            const { data, error: rpcError } = await supabase.rpc('get_email_by_username', {
+                check_username: emailToUse.toLowerCase(),
+            });
+
+            if (rpcError || !data) {
+                setSignInError('Username/email atau password salah.');
+                setSignInLoading(false);
+                return;
+            }
+
+            emailToUse = data;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
-            email: signInEmail,
+            email: emailToUse,
             password: signInPassword,
         });
 
@@ -127,6 +183,15 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
         router.refresh();
     }
 
+    const usernameHint: Record<UsernameStatus, { text: string; color: string } | null> = {
+        idle: null,
+        invalid: { text: '3-20 karakter, huruf kecil/angka/underscore saja', color: 'text-gray-400' },
+        checking: { text: 'Mengecek ketersediaan...', color: 'text-gray-400' },
+        available: { text: 'Username tersedia', color: 'text-[#76C457]' },
+        taken: { text: 'Username sudah dipakai', color: 'text-[#E07A5F]' },
+    };
+    const hint = usernameHint[usernameStatus];
+
     return (
         <div className="relative w-full max-w-4xl min-h-[600px] mx-auto my-12 rounded-[20px] shadow-2xl overflow-hidden bg-white">
             {/* Sign Up form */}
@@ -137,21 +202,22 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
           ${isSignUp ? 'max-md:block' : 'max-md:hidden'}`}
             >
                 <form
-                    className="flex flex-col items-center justify-start h-full px-10 pt-8 pb-6 text-center bg-white"
+                    className="flex scale-[0.92] flex-col items-center justify-center h-full origin-center px-10 py-3 text-center bg-white"
                     onSubmit={handleSignUp}
                 >
-                    <Image src="/logo.png" alt="DuitTrack" width={160} height={160} loading="eager" className={logoClass} />
+                    <Image src="/logo.png" alt="DuitTrack" width={140} height={140} loading="eager" className={logoClass} />
                     <h1 className="text-2xl font-bold mb-2 font-[family-name:var(--font-sora)]">
                         Register
                     </h1>
                     <input
                         type="text"
-                        placeholder="Nama"
-                        value={signUpName}
-                        onChange={(e) => setSignUpName(e.target.value)}
+                        placeholder="Username"
+                        value={signUpUsername}
+                        onChange={(e) => handleUsernameChange(e.target.value)}
                         required
                         className={inputClass}
                     />
+                    {hint && <p className={`w-full text-left text-xs -mt-1 mb-1 ${hint.color}`}>{hint.text}</p>}
                     <input
                         type="email"
                         placeholder="Email"
@@ -160,8 +226,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                         required
                         className={inputClass}
                     />
-                    <input
-                        type="password"
+                    <PasswordInput
                         placeholder="Password"
                         value={signUpPassword}
                         onChange={(e) => setSignUpPassword(e.target.value)}
@@ -171,8 +236,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                         className={inputClass}
                     />
                     <PasswordStrength password={signUpPassword} />
-                    <input
-                        type="password"
+                    <PasswordInput
                         placeholder="Konfirmasi Password"
                         value={signUpConfirmPassword}
                         onChange={(e) => setSignUpConfirmPassword(e.target.value)}
@@ -181,7 +245,11 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                         className={inputClass}
                     />
                     {signUpError && <p role="alert" className={validationClass}>{signUpError}</p>}
-                    {signUpSuccess && <p role="status" className="w-full text-left text-sm font-medium text-[#4F9D69] mt-2">{signUpSuccess}</p>}
+                    {signUpSuccess && (
+                        <p role="status" className="w-full text-left text-sm font-medium text-[#4F9D69] mt-2">
+                            {signUpSuccess}
+                        </p>
+                    )}
                     <button
                         type="submit"
                         disabled={signUpLoading}
@@ -206,15 +274,14 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                     <Image src="/logo.png" alt="DuitTrack" width={160} height={160} loading="eager" className={logoClass} />
                     <h1 className="text-2xl font-bold mb-2 font-[family-name:var(--font-sora)]">Login</h1>
                     <input
-                        type="email"
-                        placeholder="Email"
-                        value={signInEmail}
-                        onChange={(e) => setSignInEmail(e.target.value)}
+                        type="text"
+                        placeholder="Username atau Email"
+                        value={signInIdentifier}
+                        onChange={(e) => setSignInIdentifier(e.target.value)}
                         required
                         className={inputClass}
                     />
-                    <input
-                        type="password"
+                    <PasswordInput
                         placeholder="Password"
                         value={signInPassword}
                         onChange={(e) => setSignInPassword(e.target.value)}

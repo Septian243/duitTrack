@@ -4,6 +4,7 @@ import { sendTelegramMessage } from '@/lib/telegram/sendMessage';
 import { parseTransaction } from '@/lib/parser/parseTransaction';
 import { checkBudgetAlerts } from '@/lib/budget/checkBudgetAlerts';
 import { getOrGenerateSummary } from '@/lib/ai/getOrGenerateSummary';
+import { createNotification } from '@/lib/notifications/createNotification';
 
 function formatRupiah(n: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
@@ -63,6 +64,15 @@ export async function POST(request: Request) {
             chatId,
             '✅ Akun berhasil terhubung! Sekarang kamu bisa kirim transaksi langsung, contoh: "beli kopi 20rb"'
         );
+
+        await createNotification(service, {
+            userId: link.user_id,
+            type: 'telegram_link',
+            title: 'Telegram Terhubung',
+            message: 'Akun Telegram-mu berhasil dihubungkan ke DuitTrack.',
+            source: 'telegram',
+        });
+
         return NextResponse.json({ ok: true });
     }
 
@@ -101,6 +111,15 @@ export async function POST(request: Request) {
 
         const label = lastTx.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
         await sendTelegramMessage(chatId, `🗑️ Dibatalkan: ${label} ${formatRupiah(lastTx.amount)}`);
+
+        await createNotification(service, {
+            userId: profile.id,
+            type: 'transaction',
+            title: 'Transaksi Dibatalkan',
+            message: `${label} ${formatRupiah(lastTx.amount)} dibatalkan via Telegram.`,
+            source: 'telegram',
+        });
+
         return NextResponse.json({ ok: true });
     }
 
@@ -205,6 +224,14 @@ export async function POST(request: Request) {
             transactionDate: new Date().toISOString().slice(0, 10),
         });
     }
+
+    await createNotification(service, {
+        userId: profile.id,
+        type: 'transaction',
+        title: parsed.type === 'income' ? 'Pemasukan Ditambahkan' : 'Pengeluaran Ditambahkan',
+        message: `${formatRupiah(parsed.amount)} - ${parsed.categoryName} (via Telegram)`,
+        source: 'telegram',
+    });
 
     const label = parsed.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
     await sendTelegramMessage(

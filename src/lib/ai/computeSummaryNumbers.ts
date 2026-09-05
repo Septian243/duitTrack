@@ -25,12 +25,12 @@ export async function computeSummaryNumbers(
 ): Promise<SummaryNumbers> {
     const { data: profile } = await supabase
         .from('profiles')
-        .select('main_currency, name')
+        .select('main_currency, username')
         .eq('id', userId)
         .single();
 
     const currency = profile?.main_currency ?? 'IDR';
-    const userName = profile?.name ?? null;
+    const userName = profile?.username ?? null;
     const { start, end } = getMonthRange(month);
 
     const { data: transactions } = await supabase

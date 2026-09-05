@@ -30,7 +30,6 @@ export default async function DashboardLayout({
                 <TopBar
                     userName={profile?.username ?? null}
                     userId={user.id}
-                    userEmail={user.email ?? ''}
                     userAvatarUrl={profile?.avatar_url ?? null}
                 />
                 <main className="min-h-0 flex-1 overflow-y-auto p-8">{children}</main>
