@@ -36,12 +36,10 @@ type Notification = {
 export default function TopBar({
     userName,
     userId,
-    userEmail,
     userAvatarUrl,
 }: {
     userName: string | null;
     userId: string;
-    userEmail: string;
     userAvatarUrl: string | null;
 }) {
     const pathname = usePathname();
@@ -69,11 +67,7 @@ export default function TopBar({
 
     // --- Search logic ---
     useEffect(() => {
-        if (!query.trim()) {
-            setFlatResults([]);
-            setActiveIndex(-1);
-            return;
-        }
+        if (!query.trim()) return;
 
         const timeout = setTimeout(async () => {
             const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -109,7 +103,6 @@ export default function TopBar({
         }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     function toggleSearch() {
@@ -159,20 +152,19 @@ export default function TopBar({
         (r): r is TransactionResult => r.type === 'transaction'
     );
 
-    // --- Notification logic ---
-    async function loadNotifications() {
-        const res = await fetch('/api/notifications');
-        const data = await res.json();
-        setNotifications(data.notifications);
-        setUnreadCount(data.unreadCount);
-    }
-
     useEffect(() => {
-        loadNotifications();
-
         const supabase = createClient();
         let channel: ReturnType<typeof supabase.channel> | null = null;
         let cancelled = false;
+
+        async function loadInitialNotifications() {
+            const res = await fetch('/api/notifications');
+            if (!res.ok || cancelled) return;
+            const data = await res.json();
+            if (cancelled) return;
+            setNotifications(data.notifications);
+            setUnreadCount(data.unreadCount);
+        }
 
         async function setupRealtime() {
             const {
@@ -203,13 +195,13 @@ export default function TopBar({
                 .subscribe();
         }
 
-        setupRealtime();
+        void loadInitialNotifications();
+        void setupRealtime();
 
         return () => {
             cancelled = true;
             if (channel) supabase.removeChannel(channel);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId]);
 
     async function handleOpenNotifDropdown() {
@@ -253,7 +245,14 @@ export default function TopBar({
                                 type="text"
                                 placeholder="Cari transaksi atau halaman..."
                                 value={query}
-                                onChange={(e) => setQuery(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setQuery(value);
+                                    if (!value.trim()) {
+                                        setFlatResults([]);
+                                        setActiveIndex(-1);
+                                    }
+                                }}
                                 onKeyDown={handleKeyDown}
                                 className={`bg-transparent outline-none text-sm placeholder:text-gray-400 transition-all duration-300
                   ${isExpanded ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
