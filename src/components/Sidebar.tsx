@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
-    LayoutDashboard,
+    House,
     Receipt,
     Wallet,
     TrendingUp,
@@ -19,7 +19,7 @@ import {
 import { signOut } from '@/lib/supabase/actions';
 
 const navItems = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/', label: 'Dashboard', icon: House },
     { href: '/transactions', label: 'Transaksi', icon: Receipt },
     { href: '/budgets', label: 'Budget', icon: Wallet },
     { href: '/cashflow', label: 'Cash Flow', icon: TrendingUp },

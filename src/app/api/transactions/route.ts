@@ -15,13 +15,24 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit')) || 50;
+    const month = searchParams.get('month'); // opsional, format "YYYY-MM"
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('transactions')
         .select('*, categories(name), transaction_tags(tags(id, name))')
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(limit);
+
+    if (month) {
+        const start = `${month}-01`;
+        const endObj = new Date(start);
+        endObj.setMonth(endObj.getMonth() + 1);
+        const end = endObj.toISOString().slice(0, 10);
+        query = query.gte('transaction_date', start).lt('transaction_date', end);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
