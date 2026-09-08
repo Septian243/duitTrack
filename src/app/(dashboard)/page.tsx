@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
     LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
@@ -270,9 +271,11 @@ export default function DashboardPage() {
                     className="absolute inset-0 opacity-40"
                     style={{ backgroundImage: 'url(/hero-pattern.svg)', backgroundSize: '80px 80px' }}
                 />
-                <img
+                <Image
                     src="/Hero-Banner-Card.png"
                     alt=""
+                    width={800}
+                    height={500}
                     className="absolute inset-y-0 right-0 h-full w-auto max-w-[50%] object-contain object-right pointer-events-none select-none opacity-90 z-10"
                 />
                 <div className="relative z-20 p-8 max-w-xl">
