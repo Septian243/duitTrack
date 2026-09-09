@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import LoadingState from '@/components/LoadingState';
+import MonthToolbar, { shiftMonth } from '@/components/MonthToolbar';
 import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
     LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
 } from 'recharts';
 import {
-    Wallet, TrendingDown, Target, ArrowUp, ArrowDown, Calendar, Activity,
+    Wallet, TrendingDown, Target, ArrowUp, ArrowDown, Activity,
     PieChart as PieChartIcon, TrendingUp, Compass, Receipt, Bell, Flame, CalendarDays,
 } from 'lucide-react';
 
@@ -48,34 +49,9 @@ function getCurrentMonthStr() {
     return new Date().toISOString().slice(0, 7);
 }
 
-function shiftMonth(monthStr: string, delta: number) {
-    const d = new Date(`${monthStr}-01`);
-    d.setMonth(d.getMonth() + delta);
-    return d.toISOString().slice(0, 7);
-}
-
 function daysInMonth(monthStr: string) {
     const [y, m] = monthStr.split('-').map(Number);
     return new Date(y, m, 0).getDate();
-}
-
-function monthLabel(monthStr: string) {
-    const d = new Date(`${monthStr}-01`);
-    return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-}
-
-function monthShortLabel(monthStr: string) {
-    const d = new Date(`${monthStr}-01`);
-    return d.toLocaleDateString('id-ID', { month: 'short' });
-}
-
-function currentDateLabel() {
-    return new Date().toLocaleDateString('id-ID', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
 }
 
 function CardHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
@@ -123,8 +99,6 @@ export default function DashboardPage() {
         null
     );
     const [loading, setLoading] = useState(true);
-
-    const monthInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch data yang tergantung bulan terpilih di toolbar
     useEffect(() => {
@@ -221,25 +195,6 @@ export default function DashboardPage() {
 
     const showReminder = streak && (!streak.hasTransactionToday || streak.streakDays >= 2);
 
-    // Chip shortcut: 3 bulan terakhir dari HARI INI (bukan dari bulan yang sedang dipilih)
-    const monthChips = [shiftMonth(currentMonthStr, -2), shiftMonth(currentMonthStr, -1), currentMonthStr];
-
-    function handleMonthInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-        if (e.target.value) setSelectedMonth(e.target.value);
-    }
-
-    function openMonthPicker() {
-        const input = monthInputRef.current;
-        if (!input) return;
-
-        const inputWithPicker = input as HTMLInputElement & { showPicker?: () => void };
-        if (typeof inputWithPicker.showPicker === 'function') {
-            inputWithPicker.showPicker();
-        } else {
-            inputWithPicker.click();
-        }
-    }
-
     return (
         <div>
             {/* Hero banner */}
@@ -293,50 +248,17 @@ export default function DashboardPage() {
             )}
 
             {/* Toolbar Bulan */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h2 className="text-xl font-bold text-[#1B2A22] font-[family-name:var(--font-sora)]">
-                        {monthLabel(selectedMonth)}
-                    </h2>
-                    <p className="mt-0.5 text-sm text-gray-400">{currentDateLabel()}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {monthChips.map((m) => (
-                        <button
-                            key={m}
-                            onClick={() => setSelectedMonth(m)}
-                            className={`text-xs px-3 py-1.5 rounded-full transition-colors capitalize ${selectedMonth === m
-                                ? 'bg-[#76C457] text-white font-medium'
-                                : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'
-                                }`}
-                        >
-                            {monthShortLabel(m)}
-                        </button>
-                    ))}
-                    <button
-                        type="button"
-                        onClick={openMonthPicker}
-                        className="relative w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
-                        aria-label="Pilih bulan lain"
-                    >
-                        <Calendar size={14} className="text-gray-500" />
-                        <input
-                            ref={monthInputRef}
-                            type="month"
-                            value={selectedMonth}
-                            onChange={handleMonthInputChange}
-                            max={currentMonthStr}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                        />
-                    </button>
-                </div>
-            </div>
+            <MonthToolbar
+                selectedMonth={selectedMonth}
+                onChange={setSelectedMonth}
+                currentMonthStr={currentMonthStr}
+            />
 
             {!monthHasTransactions ? (
                 <div className="bg-white rounded-2xl shadow-sm p-10 mb-8 text-center">
                     <CalendarDays size={28} className="text-gray-300 mx-auto mb-3" />
                     <p className="text-sm text-gray-400">
-                        Belum ada transaksi di bulan {monthLabel(selectedMonth)}.
+                        Belum ada transaksi di bulan ini.
                     </p>
                 </div>
             ) : (
