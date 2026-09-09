@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import LoadingState from '@/components/LoadingState';
 
 type Category = { id: string; name: string; type: 'income' | 'expense' };
 type Budget = {
@@ -85,7 +86,7 @@ export default function BudgetsPage() {
         setReloadKey((k) => k + 1);
     }
 
-    if (loading) return <p>Memuat...</p>;
+    if (loading) return <LoadingState />;
 
     return (
         <div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import LoadingState from '@/components/LoadingState';
 
 type Category = {
     id: string;
@@ -60,7 +61,7 @@ export default function CategoriesPage() {
         setReloadKey((k) => k + 1);
     }
 
-    if (loading) return <p>Memuat...</p>;
+    if (loading) return <LoadingState />;
 
     return (
         <div>

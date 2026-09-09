@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import LoadingState from '@/components/LoadingState';
 
 export default function SettingsPage() {
     const [code, setCode] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export default function SettingsPage() {
 
             <h3 style={{ marginTop: 32 }}>Reminder Harian</h3>
             {profileLoading ? (
-                <p>Memuat...</p>
+                <LoadingState />
             ) : (
                 <form onSubmit={handleSaveReminder}>
                     <label style={{ display: 'block', marginBottom: 12 }}>

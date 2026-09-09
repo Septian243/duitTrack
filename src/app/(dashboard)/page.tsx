@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import LoadingState from '@/components/LoadingState';
 import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
     LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
@@ -184,7 +185,7 @@ export default function DashboardPage() {
         };
     }, [trendMonths]);
 
-    if (loading) return <p>Memuat...</p>;
+    if (loading) return <LoadingState />;
 
     const mainSummary = summary[0] ?? { currency: 'IDR', income: 0, expense: 0, balance: 0 };
     const prevMainSummary = prevSummary.find((s) => s.currency === mainSummary.currency);
@@ -241,6 +242,32 @@ export default function DashboardPage() {
 
     return (
         <div>
+            {/* Hero banner */}
+            <div className="bg-gradient-to-br from-[#0F3D2E] via-[#1B4D3A] to-[#3A7A5C] rounded-3xl mb-8 relative overflow-hidden">
+                <div
+                    className="absolute inset-0 opacity-40"
+                    style={{ backgroundImage: 'url(/hero-pattern.svg)', backgroundSize: '80px 80px' }}
+                />
+                <Image
+                    src="/Hero-Banner-Card.png"
+                    alt=""
+                    width={800}
+                    height={500}
+                    loading="eager"
+                    className="absolute inset-y-0 right-0 h-full w-auto max-w-[50%] object-contain object-right pointer-events-none select-none opacity-90 z-10"
+                />
+                <div className="relative z-20 p-8 max-w-xl">
+                    <h1 className="text-3xl font-[family-name:var(--font-sora)] mb-2">
+                        <span className="font-normal text-white/90">Selamat Datang, </span>
+                        <span className="font-extrabold text-white">{username ?? 'Pengguna'}!</span>
+                    </h1>
+                    <p className="text-white/80 text-sm">
+                        Pantau pemasukan, pengeluaran, dan kesehatan keuanganmu secara real-time — semua
+                        tercatat rapi di satu tempat, baik dari web maupun Telegram.
+                    </p>
+                </div>
+            </div>
+
             {/* Reminder/Nudge - kondisional, di luar urutan tetap */}
             {showReminder && (
                 <div
@@ -264,31 +291,6 @@ export default function DashboardPage() {
                     )}
                 </div>
             )}
-
-            {/* Hero banner */}
-            <div className="bg-gradient-to-br from-[#0F3D2E] via-[#1B4D3A] to-[#3A7A5C] rounded-3xl mb-8 relative overflow-hidden">
-                <div
-                    className="absolute inset-0 opacity-40"
-                    style={{ backgroundImage: 'url(/hero-pattern.svg)', backgroundSize: '80px 80px' }}
-                />
-                <Image
-                    src="/Hero-Banner-Card.png"
-                    alt=""
-                    width={800}
-                    height={500}
-                    className="absolute inset-y-0 right-0 h-full w-auto max-w-[50%] object-contain object-right pointer-events-none select-none opacity-90 z-10"
-                />
-                <div className="relative z-20 p-8 max-w-xl">
-                    <h1 className="text-3xl font-[family-name:var(--font-sora)] mb-2">
-                        <span className="font-normal text-white/90">Selamat Datang, </span>
-                        <span className="font-extrabold text-white">{username ?? 'Pengguna'}!</span>
-                    </h1>
-                    <p className="text-white/80 text-sm">
-                        Pantau pemasukan, pengeluaran, dan kesehatan keuanganmu secara real-time — semua
-                        tercatat rapi di satu tempat, baik dari web maupun Telegram.
-                    </p>
-                </div>
-            </div>
 
             {/* Toolbar Bulan */}
             <div className="flex items-center justify-between mb-6">

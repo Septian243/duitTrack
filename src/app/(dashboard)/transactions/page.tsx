@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import LoadingState from '@/components/LoadingState';
 
 type Category = { id: string; name: string; type: 'income' | 'expense' };
 type Tag = { id: string; name: string };
@@ -104,7 +105,7 @@ export default function TransactionsPage() {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
     }
 
-    if (loading) return <p>Memuat...</p>;
+    if (loading) return <LoadingState />;
 
     return (
         <div>

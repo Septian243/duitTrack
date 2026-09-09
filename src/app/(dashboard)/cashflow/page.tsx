@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import LoadingState from '@/components/LoadingState';
 
 type Projection = {
     currency: string;
@@ -43,7 +44,7 @@ export default function CashflowPage() {
         };
     }, []);
 
-    if (loading) return <p>Memuat...</p>;
+    if (loading) return <LoadingState />;
 
     return (
         <div>
