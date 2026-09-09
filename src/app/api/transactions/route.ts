@@ -14,30 +14,70 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Number(searchParams.get('limit')) || 50;
-    const month = searchParams.get('month'); // opsional, format "YYYY-MM"
+    const month = searchParams.get('month');
+    const search = searchParams.get('search')?.trim() || '';
+    const categoryId = searchParams.get('category_id');
+    const type = searchParams.get('type');
+    let dateFrom = searchParams.get('date_from');
+    let dateTo = searchParams.get('date_to');
+    const sort = searchParams.get('sort');
+    const page = Number(searchParams.get('page')) || 1;
+    const pageSize = Number(searchParams.get('page_size')) || Number(searchParams.get('limit')) || 10;
 
-    let query = supabase
-        .from('transactions')
-        .select('*, categories(name), transaction_tags(tags(id, name))')
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-    if (month) {
+    if (month && !dateFrom && !dateTo) {
         const start = `${month}-01`;
         const endObj = new Date(start);
         endObj.setMonth(endObj.getMonth() + 1);
-        const end = endObj.toISOString().slice(0, 10);
-        query = query.gte('transaction_date', start).lt('transaction_date', end);
+        endObj.setDate(endObj.getDate() - 1);
+        dateFrom = start;
+        dateTo = endObj.toISOString().slice(0, 10);
     }
 
-    const { data, error } = await query;
+    let matchingCategoryIds: string[] = [];
+    if (search) {
+        const { data: catMatches } = await supabase
+            .from('categories')
+            .select('id')
+            .ilike('name', `%${search}%`);
+        matchingCategoryIds = (catMatches ?? []).map((c) => c.id);
+    }
+
+    let query = supabase
+        .from('transactions')
+        .select('*, categories(name), transaction_tags(tags(id, name))', { count: 'exact' });
+
+    if (search) {
+        const orParts = [`note.ilike.%${search}%`];
+        if (matchingCategoryIds.length > 0) {
+            orParts.push(`category_id.in.(${matchingCategoryIds.join(',')})`);
+        }
+        query = query.or(orParts.join(','));
+    }
+
+    if (categoryId) query = query.eq('category_id', categoryId);
+    if (type === 'income' || type === 'expense') query = query.eq('type', type);
+    if (dateFrom) query = query.gte('transaction_date', dateFrom);
+    if (dateTo) query = query.lte('transaction_date', dateTo);
+
+    if (sort === 'amount_asc') {
+        query = query.order('amount', { ascending: true });
+    } else if (sort === 'amount_desc') {
+        query = query.order('amount', { ascending: false });
+    } else {
+        query = query.order('transaction_date', { ascending: false }).order('created_at', { ascending: false });
+    }
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json(data);
+
+    return NextResponse.json({ data, total: count ?? 0, page, pageSize });
 }
 
 export async function POST(request: Request) {

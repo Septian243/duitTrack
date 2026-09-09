@@ -12,9 +12,11 @@ import {
     Wallet, TrendingDown, Target, ArrowUp, ArrowDown, Calendar, Activity,
     PieChart as PieChartIcon, TrendingUp, Compass, Receipt, Bell, Flame, CalendarDays,
 } from 'lucide-react';
+import TransactionModal from '@/components/TransactionModal';
 
 type SummaryItem = { currency: string; income: number; expense: number; balance: number };
 type CategoryItem = { name: string; value: number };
+type Tag = { id: string; name: string };
 type TrendItem = { month: string; income: number; expense: number };
 type BudgetItem = {
     id: string;
@@ -113,6 +115,9 @@ export default function DashboardPage() {
     const [summary, setSummary] = useState<SummaryItem[]>([]);
     const [prevSummary, setPrevSummary] = useState<SummaryItem[]>([]);
     const [categoryData, setCategoryData] = useState<CategoryItem[]>([]);
+    const [tags, setTags] = useState<Tag[]>([]);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [trendData, setTrendData] = useState<TrendItem[]>([]);
     const [trendMonths, setTrendMonths] = useState(6);
     const [username, setUsername] = useState<string | null>(null);
@@ -154,7 +159,7 @@ export default function DashboardPage() {
                 setCategoryData(catData);
                 setUsername(profileData.username ?? null);
                 setBudgets(budgetsData);
-                setRecentTransactions(transactionsData);
+                setRecentTransactions(transactionsData.data);
                 setCashflow(cashflowData.projections?.[0] ?? null);
                 setStreak(streakData);
                 setLoading(false);
