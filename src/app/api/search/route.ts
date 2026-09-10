@@ -39,6 +39,7 @@ export async function GET(request: Request) {
     const { data: transactions } = await supabase
         .from('transactions')
         .select('id, amount, type, transaction_date, note, categories(name)')
+        .eq('user_id', user.id)
         .or(`note.ilike.%${q}%`)
         .order('transaction_date', { ascending: false })
         .limit(5);
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
     const { data: byCategory } = await supabase
         .from('transactions')
         .select('id, amount, type, transaction_date, note, categories!inner(name)')
+        .eq('user_id', user.id)
         .ilike('categories.name', `%${q}%`)
         .order('transaction_date', { ascending: false })
         .limit(5);

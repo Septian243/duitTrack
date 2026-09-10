@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const { data: budgets, error } = await supabase
         .from('budgets')
         .select('*, categories(name)')
+        .eq('user_id', user.id)
         .eq('period_month', periodMonth);
 
     if (error) {
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
     const { data: transactions } = await supabase
         .from('transactions')
         .select('amount, category_id')
+        .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('transaction_date', periodMonth)
         .lt('transaction_date', endDate);

@@ -44,7 +44,8 @@ export async function GET(request: Request) {
 
     let query = supabase
         .from('transactions')
-        .select('*, categories(name), transaction_tags(tags(id, name))', { count: 'exact' });
+        .select('*, categories(name), transaction_tags(tags(id, name))', { count: 'exact' })
+        .eq('user_id', user.id);
 
     if (search) {
         const orParts = [`note.ilike.%${search}%`];

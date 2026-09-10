@@ -17,7 +17,29 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name } = body;
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+
+    if (!name) {
+        return NextResponse.json({ error: 'Nama kategori wajib diisi.' }, { status: 400 });
+    }
+
+    const { data: category, error: categoryError } = await supabase
+        .from('categories')
+        .select('is_system')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+
+    if (categoryError || !category) {
+        return NextResponse.json({ error: 'Kategori tidak ditemukan.' }, { status: 404 });
+    }
+
+    if (category.is_system) {
+        return NextResponse.json(
+            { error: 'Kategori default tidak dapat diedit.' },
+            { status: 403 }
+        );
+    }
 
     const { data, error } = await supabase
         .from('categories')
@@ -45,6 +67,24 @@ export async function DELETE(
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: category, error: categoryError } = await supabase
+        .from('categories')
+        .select('is_system')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+
+    if (categoryError || !category) {
+        return NextResponse.json({ error: 'Kategori tidak ditemukan.' }, { status: 404 });
+    }
+
+    if (category.is_system) {
+        return NextResponse.json(
+            { error: 'Kategori default tidak dapat dihapus.' },
+            { status: 403 }
+        );
     }
 
     const [{ count: transactionCount, error: transactionError }, { count: budgetCount, error: budgetError }] =
