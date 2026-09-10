@@ -16,6 +16,22 @@ export async function DELETE(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { count, error: usageError } = await supabase
+        .from('transaction_tags')
+        .select('transaction_id', { count: 'exact', head: true })
+        .eq('tag_id', id);
+
+    if (usageError) {
+        return NextResponse.json({ error: usageError.message }, { status: 500 });
+    }
+
+    if ((count ?? 0) > 0) {
+        return NextResponse.json(
+            { error: 'Tag masih digunakan oleh transaksi dan tidak dapat dihapus.' },
+            { status: 409 }
+        );
+    }
+
     const { error } = await supabase
         .from('tags')
         .delete()

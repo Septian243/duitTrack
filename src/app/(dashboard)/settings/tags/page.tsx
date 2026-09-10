@@ -54,7 +54,13 @@ export default function TagsPage() {
 
     async function handleDelete(id: string) {
         if (!confirm('Hapus tag ini?')) return;
-        await fetch(`/api/tags/${id}`, { method: 'DELETE' });
+        setError(null);
+        const res = await fetch(`/api/tags/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            setError(data.error ?? 'Tag tidak dapat dihapus.');
+            return;
+        }
         setReloadKey((k) => k + 1);
     }
 

@@ -57,7 +57,13 @@ export default function CategoriesPage() {
 
     async function handleDelete(id: string) {
         if (!confirm('Hapus kategori ini?')) return;
-        await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+        setError(null);
+        const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            setError(data.error ?? 'Kategori tidak dapat dihapus.');
+            return;
+        }
         setReloadKey((k) => k + 1);
     }
 

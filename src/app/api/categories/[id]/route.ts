@@ -47,6 +47,34 @@ export async function DELETE(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const [{ count: transactionCount, error: transactionError }, { count: budgetCount, error: budgetError }] =
+        await Promise.all([
+            supabase
+                .from('transactions')
+                .select('id', { count: 'exact', head: true })
+                .eq('category_id', id)
+                .eq('user_id', user.id),
+            supabase
+                .from('budgets')
+                .select('id', { count: 'exact', head: true })
+                .eq('category_id', id)
+                .eq('user_id', user.id),
+        ]);
+
+    if (transactionError || budgetError) {
+        return NextResponse.json(
+            { error: transactionError?.message ?? budgetError?.message },
+            { status: 500 }
+        );
+    }
+
+    if ((transactionCount ?? 0) > 0 || (budgetCount ?? 0) > 0) {
+        return NextResponse.json(
+            { error: 'Kategori masih digunakan oleh transaksi atau budget dan tidak dapat dihapus.' },
+            { status: 409 }
+        );
+    }
+
     const { error } = await supabase
         .from('categories')
         .delete()

@@ -347,7 +347,10 @@ export default function DashboardPage() {
                         </div>
 
                         {/* 4. Proyeksi Akhir Bulan / Saldo Akhir Bulan */}
-                        <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
+                        <Link
+                            href="/cashflow"
+                            className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden hover:shadow-md transition-shadow block"
+                        >
                             <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#9B5DE5]/10 rounded-full blur-xl" />
                             <div className="relative">
                                 <div className="w-11 h-11 rounded-xl bg-[#F1EBFA] flex items-center justify-center mb-3">
@@ -368,7 +371,7 @@ export default function DashboardPage() {
                                         : 'Bulan ini sudah selesai'}
                                 </p>
                             </div>
-                        </div>
+                        </Link>
                     </div>
 
                     {/* Baris 2: Pengeluaran per Kategori (60%) + Status Budget (40%) */}
