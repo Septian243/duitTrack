@@ -4,12 +4,41 @@ import { createNotification } from '@/lib/notifications/createNotification';
 
 export async function GET() {
     const supabase = await createClient();
-    const { data, error } = await supabase.from('tags').select('*').order('name');
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: tags, error } = await supabase
+        .from('tags')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name');
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json(data);
+
+    const { data: usageRows } = await supabase
+        .from('transaction_tags')
+        .select('tag_id, transactions!inner(user_id)')
+        .eq('transactions.user_id', user.id);
+
+    const usageCount: Record<string, number> = {};
+    for (const row of usageRows ?? []) {
+        usageCount[row.tag_id] = (usageCount[row.tag_id] ?? 0) + 1;
+    }
+
+    const result = tags.map((t) => ({
+        ...t,
+        usage_count: usageCount[t.id] ?? 0,
+        in_use: (usageCount[t.id] ?? 0) > 0,
+    }));
+
+    return NextResponse.json(result);
 }
 
 export async function POST(request: Request) {

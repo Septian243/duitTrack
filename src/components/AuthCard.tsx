@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { PasswordStrength } from '@/components/PasswordStrength';
 import PasswordInput from '@/components/PasswordInput';
+import { useTheme } from '@/context/ThemeContext';
 
 type Mode = 'signin' | 'signup';
 
@@ -39,6 +40,7 @@ function getAuthError(message: string) {
 
 export default function AuthCard({ initialMode }: { initialMode: Mode }) {
     const router = useRouter();
+    const { theme } = useTheme();
     const supabase = createClient();
 
     const [mode, setMode] = useState<Mode>(initialMode);
@@ -205,7 +207,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                     className="flex scale-[0.92] flex-col items-center justify-center h-full origin-center px-10 py-3 text-center bg-white"
                     onSubmit={handleSignUp}
                 >
-                    <Image src="/logo.png" alt="DuitTrack" width={140} height={140} loading="eager" className={logoClass} />
+                    <Image src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="DuitTrack" width={140} height={140} loading="eager" className={logoClass} />
                     <h1 className="text-2xl font-bold mb-2 font-[family-name:var(--font-sora)]">
                         Register
                     </h1>
@@ -271,7 +273,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                     className="flex flex-col items-center justify-center h-full px-10 text-center bg-white -translate-y-8"
                     onSubmit={handleSignIn}
                 >
-                    <Image src="/logo.png" alt="DuitTrack" width={160} height={160} loading="eager" className={logoClass} />
+                    <Image src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="DuitTrack" width={160} height={160} loading="eager" className={logoClass} />
                     <h1 className="text-2xl font-bold mb-2 font-[family-name:var(--font-sora)]">Login</h1>
                     <input
                         type="text"

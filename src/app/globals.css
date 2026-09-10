@@ -37,7 +37,9 @@
 }
 
 .dark {
-  --color-bg: #ffffff;
+  --background: #111a15;
+  --foreground: #f5efe0;
+  --color-bg: #111a15;
   --color-ink: #F5EFE0;
   --color-primary: #2ECC81;
   --color-warning: #F2CC8F;
@@ -57,6 +59,60 @@ body {
   color: var(--color-ink);
   font-family: var(--font-geist-sans), sans-serif;
   transition: background 0.2s, color 0.2s;
+}
+
+.dark body {
+  background: linear-gradient(135deg, #111a15 0%, #17251c 50%, #111a15 100%);
+}
+
+/* Komponen lama memakai utility warna statis, jadi override warna-warna
+   tersebut ketika class dark aktif di elemen html. */
+.dark .bg-white {
+  background-color: #18231d !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #1d2b23 !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #26362c !important;
+}
+
+.dark .bg-\[\#F5FAF3\] {
+  background-color: #111a15 !important;
+}
+
+.dark .border-gray-50,
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: rgba(245, 239, 224, 0.14) !important;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-700,
+.dark .text-gray-800,
+.dark .text-\[\#1B2A22\] {
+  color: #f5efe0 !important;
+}
+
+.dark .text-gray-400,
+.dark .text-gray-500 {
+  color: #aeb9b0 !important;
+}
+
+/* Teks detail alert tetap gelap agar terbaca di atas background pastel. */
+.dark .bg-\[\#FCEAE5\] .text-gray-600 {
+  color: #7a463c !important;
+}
+
+.dark .bg-\[\#E8F5E0\] .text-gray-600 {
+  color: #3d6b2c !important;
+}
+
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: #26362c !important;
 }
 
 h1,

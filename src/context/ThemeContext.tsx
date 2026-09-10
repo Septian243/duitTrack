@@ -9,14 +9,17 @@ const ThemeContext = createContext<{
     toggleTheme: () => void;
 } | null>(null);
 
-function getInitialTheme(): Theme {
-    if (typeof window === 'undefined') return 'light';
-    const saved = localStorage.getItem('duittrack-theme') as Theme | null;
-    return saved ?? 'light';
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setTheme] = useState<Theme>(getInitialTheme);
+    // Keep the first render identical on the server and client.
+    const [theme, setTheme] = useState<Theme>('light');
+
+    // localStorage is only available in the browser, after hydration.
+    useEffect(() => {
+        const saved = localStorage.getItem('duittrack-theme') as Theme | null;
+        if (saved === 'light' || saved === 'dark') {
+            queueMicrotask(() => setTheme(saved));
+        }
+    }, []);
 
     useEffect(() => {
         document.documentElement.classList.toggle('dark', theme === 'dark');

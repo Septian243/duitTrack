@@ -17,6 +17,7 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { signOut } from '@/lib/supabase/actions';
+import { useTheme } from '@/context/ThemeContext';
 
 const navItems = [
     { href: '/', label: 'Dashboard', icon: House },
@@ -25,7 +26,7 @@ const navItems = [
     { href: '/cashflow', label: 'Cash Flow', icon: TrendingUp },
     { href: '/settings/categories', label: 'Kategori', icon: Shapes },
     { href: '/settings/tags', label: 'Tag', icon: Tag },
-    { href: '/settings', label: 'Pengaturan', icon: Settings },
+    { href: '/settings', label: 'Setting', icon: Settings },
 ];
 
 const navSections = [
@@ -37,6 +38,7 @@ const navSections = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const { theme } = useTheme();
     const [isMinimized, setIsMinimized] = useState(false);
     const [tooltip, setTooltip] = useState<{ label: string; top: number; left: number } | null>(null);
 
@@ -61,7 +63,7 @@ export default function Sidebar() {
                         className="flex items-center justify-start gap-2"
                     >
                         <Image
-                            src="/logo.png"
+                            src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'}
                             alt="DuitTrack"
                             width={56}
                             height={56}

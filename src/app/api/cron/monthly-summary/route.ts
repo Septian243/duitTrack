@@ -21,7 +21,8 @@ export async function GET(request: Request) {
     const { data: profiles, error } = await service
         .from('profiles')
         .select('id, telegram_chat_id')
-        .not('telegram_chat_id', 'is', null);
+        .not('telegram_chat_id', 'is', null)
+        .eq('monthly_summary_enabled', true);
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

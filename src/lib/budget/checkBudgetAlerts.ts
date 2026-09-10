@@ -35,11 +35,12 @@ export async function checkBudgetAlerts(
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('telegram_chat_id')
+        .select('telegram_chat_id, budget_alert_enabled')
         .eq('id', userId)
         .single();
 
     if (!profile?.telegram_chat_id) return;
+    if (profile.budget_alert_enabled === false) return;
 
     for (const budget of budgets) {
         let query = supabase

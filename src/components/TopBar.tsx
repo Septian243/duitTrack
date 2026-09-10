@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, User } from 'lucide-react';
+import { Search, Bell, User, Moon, Sun } from 'lucide-react';
 import { notificationIcons, formatRelativeTime } from '@/lib/notifications/notificationMeta';
 import type { NotificationType } from '@/lib/notifications/createNotification';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { useTheme } from '@/context/ThemeContext';
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
     '/': { title: 'Dashboard', subtitle: 'Ringkasan keuanganmu bulan ini' },
@@ -15,7 +16,7 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
     '/cashflow': { title: 'Cash Flow', subtitle: 'Proyeksi pengeluaran sampai akhir bulan' },
     '/settings/categories': { title: 'Kategori', subtitle: 'Kelola kategori transaksi' },
     '/settings/tags': { title: 'Tag', subtitle: 'Kelola tag transaksi' },
-    '/settings': { title: 'Pengaturan', subtitle: 'Kelola akun dan preferensimu' },
+    '/settings': { title: 'Setting', subtitle: 'Kelola integrasi dan notifikasimu' },
     '/profile': { title: 'Profile', subtitle: 'Kelola informasi akun dan keamananmu' },
 };
 
@@ -44,6 +45,7 @@ export default function TopBar({
 }) {
     const pathname = usePathname();
     const router = useRouter();
+    const { theme, toggleTheme } = useTheme();
     const page = pageTitles[pathname] ?? { title: 'DuitTrack', subtitle: '' };
     const initial = userName ? userName.charAt(0).toUpperCase() : '?';
 
@@ -362,6 +364,17 @@ export default function TopBar({
                             </div>
                         )}
                     </div>
+
+                    {/* Toggle dark mode di samping notifikasi */}
+                    <button
+                        type="button"
+                        onClick={toggleTheme}
+                        className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50"
+                        aria-label={theme === 'light' ? 'Aktifkan dark mode' : 'Aktifkan light mode'}
+                        title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+                    >
+                        {theme === 'light' ? <Moon size={18} strokeWidth={2.25} /> : <Sun size={18} strokeWidth={2.25} />}
+                    </button>
 
                     {/* Profil dengan dropdown */}
                     <div className="relative" ref={profileRef}>

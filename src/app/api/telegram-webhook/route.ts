@@ -57,7 +57,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ ok: true });
         }
 
-        await service.from('profiles').update({ telegram_chat_id: chatId }).eq('id', link.user_id);
+        await service
+            .from('profiles')
+            .update({
+                telegram_chat_id: chatId,
+                telegram_username: message.from?.username ?? null,
+            })
+            .eq('id', link.user_id);
         await service.from('telegram_links').update({ used: true }).eq('code', link.code);
 
         await sendTelegramMessage(
