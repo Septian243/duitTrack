@@ -104,7 +104,6 @@ export default function SettingsPage() {
         }
 
         if (!expiresAt) {
-            setCountdownLabel(null);
             return;
         }
 
@@ -151,7 +150,6 @@ export default function SettingsPage() {
         return () => {
             if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [code, profile?.telegram_chat_id]);
 
     async function handleGenerateCode() {
