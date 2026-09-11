@@ -264,7 +264,7 @@ export default function DashboardPage() {
             ) : (
                 <>
                     {/* Baris 1: 4 stat cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         {/* 1. Saldo Bulan Ini */}
                         <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#76C457]/10 rounded-full blur-xl" />
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Baris 2: Pengeluaran per Kategori (60%) + Status Budget (40%) */}
-                    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-6 mb-6">
                         <div className="bg-white rounded-2xl shadow-sm p-6">
                             <CardHeader icon={PieChartIcon} title="Pengeluaran per Kategori" />
                             {categoryData.length === 0 ? (

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
 import MonthToolbar from '@/components/MonthToolbar';
 import BudgetModal from '@/components/BudgetModal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { Wallet, TrendingDown, PiggyBank, Plus, Target, ListChecks, Pencil, Trash2 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 type Category = { id: string; name: string; type: 'income' | 'expense' };
 type Budget = {
@@ -40,6 +42,8 @@ export default function BudgetsPage() {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Budget | null>(null);
+    const { showToast } = useToast();
 
     useEffect(() => {
         async function loadStatic() {
@@ -92,14 +96,24 @@ export default function BudgetsPage() {
     }
 
     async function handleSaved() {
+        const wasEditing = Boolean(editingBudget);
+        const budgetName = editingBudget?.categories?.name ?? 'Keseluruhan';
         closeModal();
         await refreshBudgets();
+        showToast({
+            type: 'success',
+            title: 'Berhasil Disimpan',
+            description: `Budget "${budgetName}" berhasil diatur${wasEditing ? ' kembali' : ''}.`,
+        });
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm('Hapus budget ini?')) return;
-        await fetch(`/api/budgets/${id}`, { method: 'DELETE' });
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        const budgetName = deleteTarget.category_id === null ? 'Keseluruhan' : deleteTarget.categories?.name ?? 'Tanpa nama';
+        await fetch(`/api/budgets/${deleteTarget.id}`, { method: 'DELETE' });
+        setDeleteTarget(null);
         await refreshBudgets();
+        showToast({ type: 'success', title: 'Berhasil Dihapus', description: `Budget "${budgetName}" berhasil dihapus.` });
     }
 
     const overallBudget = budgets.find((b) => b.category_id === null) ?? null;
@@ -142,7 +156,7 @@ export default function BudgetsPage() {
                             <Pencil size={16} />
                         </button>
                         <button
-                            onClick={() => handleDelete(b.id)}
+                            onClick={() => setDeleteTarget(b)}
                             className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#FCE4E4] text-[#E0574B] hover:opacity-80 transition-opacity"
                             aria-label="Hapus"
                         >
@@ -166,126 +180,138 @@ export default function BudgetsPage() {
             />
 
             <>
-                    {/* Stat cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
-                            <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#3D84A8]/10 rounded-full blur-xl" />
-                            <div className="relative flex items-center gap-4">
-                                <div className="w-11 h-11 shrink-0 rounded-xl bg-[#E7F1F6] flex items-center justify-center">
-                                    <Wallet size={20} className="text-[#3D84A8]" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
-                                        Total Budget
-                                    </p>
-                                    <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                        {formatMoney(totalBudget)}
-                                    </p>
-                                </div>
+                {/* Stat cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#3D84A8]/10 rounded-full blur-xl" />
+                        <div className="relative flex items-center gap-4">
+                            <div className="w-11 h-11 shrink-0 rounded-xl bg-[#E7F1F6] flex items-center justify-center">
+                                <Wallet size={20} className="text-[#3D84A8]" />
                             </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
-                            <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#E07A5F]/10 rounded-full blur-xl" />
-                            <div className="relative flex items-center gap-4">
-                                <div className="w-11 h-11 shrink-0 rounded-xl bg-[#FCEAE5] flex items-center justify-center">
-                                    <TrendingDown size={20} className="text-[#E07A5F]" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
-                                        Total Terpakai
-                                    </p>
-                                    <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                        {formatMoney(totalSpent)}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
-                            <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#76C457]/10 rounded-full blur-xl" />
-                            <div className="relative flex items-center gap-4">
-                                <div className="w-11 h-11 shrink-0 rounded-xl bg-[#E8F5E0] flex items-center justify-center">
-                                    <PiggyBank size={20} className="text-[#76C457]" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
-                                        Sisa Budget
-                                    </p>
-                                    <p
-                                        className={`text-xl font-bold font-[family-name:var(--font-sora)] ${totalRemaining < 0 ? 'text-[#E07A5F]' : 'text-[#1B2A22]'
-                                            }`}
-                                    >
-                                        {formatMoney(totalRemaining)}
-                                    </p>
-                                </div>
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
+                                    Total Budget
+                                </p>
+                                <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
+                                    {formatMoney(totalBudget)}
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex justify-end mb-4">
-                        <button
-                            type="button"
-                            onClick={handleAddClick}
-                            className="flex items-center gap-2 bg-[#76C457] text-white text-sm font-bold px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity"
-                        >
-                            <Plus size={16} />
-                            Set Budget
-                        </button>
+                    <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#E07A5F]/10 rounded-full blur-xl" />
+                        <div className="relative flex items-center gap-4">
+                            <div className="w-11 h-11 shrink-0 rounded-xl bg-[#FCEAE5] flex items-center justify-center">
+                                <TrendingDown size={20} className="text-[#E07A5F]" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
+                                    Total Terpakai
+                                </p>
+                                <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
+                                    {formatMoney(totalSpent)}
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Budget Keseluruhan */}
-                    <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-9 h-9 rounded-lg bg-[#F3F1EC] flex items-center justify-center shrink-0">
-                                <Target size={16} className="text-[#76C457]" />
+                    <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#76C457]/10 rounded-full blur-xl" />
+                        <div className="relative flex items-center gap-4">
+                            <div className="w-11 h-11 shrink-0 rounded-xl bg-[#E8F5E0] flex items-center justify-center">
+                                <PiggyBank size={20} className="text-[#76C457]" />
                             </div>
-                            <h3 className="font-bold text-[#1B2A22] font-[family-name:var(--font-sora)]">
-                                Budget Keseluruhan
-                            </h3>
-                        </div>
-                        {overallBudget ? (
-                            renderBudgetRow(overallBudget)
-                        ) : (
-                            <p className="text-sm text-gray-400 py-2">
-                                Belum ada budget keseluruhan untuk bulan ini.{' '}
-                                <button
-                                    type="button"
-                                    onClick={handleAddClick}
-                                    className="text-[#76C457] font-medium hover:underline"
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
+                                    Sisa Budget
+                                </p>
+                                <p
+                                    className={`text-xl font-bold font-[family-name:var(--font-sora)] ${totalRemaining < 0 ? 'text-[#E07A5F]' : 'text-[#1B2A22]'
+                                        }`}
                                 >
-                                    Tambah sekarang →
-                                </button>
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Budget per Kategori */}
-                    <div className="bg-white rounded-2xl shadow-sm p-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-9 h-9 rounded-lg bg-[#F3F1EC] flex items-center justify-center shrink-0">
-                                <ListChecks size={16} className="text-[#76C457]" />
+                                    {formatMoney(totalRemaining)}
+                                </p>
                             </div>
-                            <h3 className="font-bold text-[#1B2A22] font-[family-name:var(--font-sora)]">
-                                Budget per Kategori
-                            </h3>
                         </div>
-                        {categoryBudgets.length === 0 ? (
-                            <p className="text-sm text-gray-400 py-2">
-                                Belum ada budget per kategori.{' '}
-                                <button
-                                    type="button"
-                                    onClick={handleAddClick}
-                                    className="text-[#76C457] font-medium hover:underline"
-                                >
-                                    Tambah budget kategori →
-                                </button>
-                            </p>
-                        ) : (
-                            <div>{categoryBudgets.map(renderBudgetRow)}</div>
-                        )}
                     </div>
+                </div>
+
+                <div className="flex justify-end mb-4">
+                    <button
+                        type="button"
+                        onClick={handleAddClick}
+                        className="flex items-center gap-2 bg-[#76C457] text-white text-sm font-bold px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity"
+                    >
+                        <Plus size={16} />
+                        Set Budget
+                    </button>
+                </div>
+
+                {/* Budget Keseluruhan */}
+                <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-lg bg-[#F3F1EC] flex items-center justify-center shrink-0">
+                            <Target size={16} className="text-[#76C457]" />
+                        </div>
+                        <h3 className="font-bold text-[#1B2A22] font-[family-name:var(--font-sora)]">
+                            Budget Keseluruhan
+                        </h3>
+                    </div>
+                    {overallBudget ? (
+                        renderBudgetRow(overallBudget)
+                    ) : (
+                        <p className="text-sm text-gray-400 py-2">
+                            Belum ada budget keseluruhan untuk bulan ini.{' '}
+                            <button
+                                type="button"
+                                onClick={handleAddClick}
+                                className="text-[#76C457] font-medium hover:underline"
+                            >
+                                Tambah sekarang →
+                            </button>
+                        </p>
+                    )}
+                </div>
+
+                {/* Budget per Kategori */}
+                <div className="bg-white rounded-2xl shadow-sm p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-lg bg-[#F3F1EC] flex items-center justify-center shrink-0">
+                            <ListChecks size={16} className="text-[#76C457]" />
+                        </div>
+                        <h3 className="font-bold text-[#1B2A22] font-[family-name:var(--font-sora)]">
+                            Budget per Kategori
+                        </h3>
+                    </div>
+                    {categoryBudgets.length === 0 ? (
+                        <p className="text-sm text-gray-400 py-2">
+                            Belum ada budget per kategori.{' '}
+                            <button
+                                type="button"
+                                onClick={handleAddClick}
+                                className="text-[#76C457] font-medium hover:underline"
+                            >
+                                Tambah budget kategori →
+                            </button>
+                        </p>
+                    ) : (
+                        <div>{categoryBudgets.map(renderBudgetRow)}</div>
+                    )}
+                </div>
             </>
+
+            <ConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="Hapus Budget"
+                itemType="budget"
+                itemName={deleteTarget
+                    ? `${deleteTarget.category_id === null ? 'Keseluruhan' : deleteTarget.categories?.name ?? 'Tanpa nama'} — ${formatMoney(deleteTarget.amount)}`
+                    : ''}
+                consequence="Riwayat pengeluaran kategori ini tidak terpengaruh, hanya batas budget-nya yang dihapus."
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDelete}
+            />
 
             {modalOpen && (
                 <BudgetModal

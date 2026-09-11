@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
 import TransactionModal from '@/components/TransactionModal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import {
     Receipt, ArrowDownCircle, ArrowUpCircle, Plus, Download,
     Search, Pencil, Trash2, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, ChevronDown,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 type Category = { id: string; name: string; type: 'income' | 'expense' };
 type Tag = { id: string; name: string };
@@ -77,6 +79,8 @@ export default function TransactionsPage() {
     const [tags, setTags] = useState<Tag[]>([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(true);
     const [staticLoading, setStaticLoading] = useState(true);
     const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
@@ -98,6 +102,7 @@ export default function TransactionsPage() {
     const [pageSize, setPageSize] = useState(10);
 
     const [exportOpen, setExportOpen] = useState(false);
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [categoryOpen, setCategoryOpen] = useState(false);
     const [typeOpen, setTypeOpen] = useState(false);
     const [dateRangeOpen, setDateRangeOpen] = useState(false);
@@ -180,9 +185,11 @@ export default function TransactionsPage() {
         };
     }, [debouncedSearch, categoryId, type, appliedRange, sort, page, pageSize]);
 
-    async function handleDelete(id: string) {
-        if (!confirm('Hapus transaksi ini?')) return;
-        await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        const label = deleteTarget.note || deleteTarget.categories?.name || 'Tanpa catatan';
+        await fetch(`/api/transactions/${deleteTarget.id}`, { method: 'DELETE' });
+        setDeleteTarget(null);
         const params = new URLSearchParams();
         if (debouncedSearch) params.set('search', debouncedSearch);
         if (categoryId) params.set('category_id', categoryId);
@@ -200,6 +207,7 @@ export default function TransactionsPage() {
         setTransactions(data.data);
         setTotal(data.total);
         setStats(await statsRes.json());
+        showToast({ type: 'success', title: 'Berhasil Dihapus', description: `Transaksi "${label}" berhasil dihapus.` });
     }
 
     function handleAddClick() {
@@ -218,6 +226,8 @@ export default function TransactionsPage() {
     }
 
     async function refreshAfterSave() {
+        const wasEditing = Boolean(editingTransaction);
+        const label = editingTransaction?.note || editingTransaction?.categories?.name || 'Transaksi baru';
         closeModal();
         const params = new URLSearchParams();
         if (debouncedSearch) params.set('search', debouncedSearch);
@@ -236,6 +246,11 @@ export default function TransactionsPage() {
         setTransactions(data.data);
         setTotal(data.total);
         setStats(await statsRes.json());
+        showToast({
+            type: 'success',
+            title: wasEditing ? 'Berhasil Diperbarui' : 'Berhasil Ditambahkan',
+            description: `Transaksi "${label}" berhasil ${wasEditing ? 'diupdate' : 'dicatat'}.`,
+        });
     }
 
     function handleTagCreated(newTag: Tag) {
@@ -313,7 +328,7 @@ export default function TransactionsPage() {
 
     return (
         <div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
                     <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#3D84A8]/10 rounded-full blur-xl" />
                     <div className="relative flex items-center gap-4">
@@ -402,7 +417,7 @@ export default function TransactionsPage() {
                     </div>
                 </div>
 
-                <div className="relative w-full sm:w-72">
+                <div className="relative hidden w-full sm:block sm:w-72">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
@@ -414,7 +429,13 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-3 sm:hidden">
+                <button type="button" onClick={() => setMobileFiltersOpen(true)} className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-600">
+                    <Search size={16} /> Filter &amp; Cari
+                </button>
+            </div>
+
+            <div className="hidden flex-wrap items-center gap-3 mb-4 sm:flex">
                 <div className="relative" ref={categoryRef}>
                     <button
                         type="button"
@@ -557,53 +578,221 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
+            {mobileFiltersOpen && (
+                <div className="fixed inset-0 z-[180] flex items-end bg-black/40 sm:hidden" onClick={() => setMobileFiltersOpen(false)}>
+                    <div className="w-full rounded-t-3xl bg-white p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                        <div className="mb-5 flex items-center justify-between">
+                            <h2 className="font-bold text-[#1B2A22]">Filter transaksi</h2>
+                            <button type="button" onClick={() => setMobileFiltersOpen(false)} className="text-sm font-medium text-[#76C457]">Tutup</button>
+                        </div>
+                        <div className="space-y-3">
+                            <input type="text" placeholder="Cari catatan atau kategori..." value={search} onChange={(event) => setSearch(event.target.value)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#76C457] focus:outline-none" />
+                            <select value={type} onChange={(event) => { setType(event.target.value as '' | 'income' | 'expense'); setPage(1); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm">
+                                <option value="">Semua Jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option>
+                            </select>
+                            <select value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setPage(1); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm">
+                                <option value="">Semua Kategori</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                            </select>
+                            <button type="button" onClick={() => setMobileFiltersOpen(false)} className="w-full rounded-xl bg-[#76C457] py-3 text-sm font-bold text-white">Terapkan Filter</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Tabel + Pagination digabung jadi satu card */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="relative overflow-hidden rounded-2xl bg-white shadow-sm">
                 {loading ? (
                     <div className="p-10">
                         <LoadingState />
                     </div>
                 ) : transactions.length === 0 ? (
                     <p className="text-sm text-gray-400 text-center py-10">Tidak ada transaksi ditemukan.</p>
-                ) : isNoneSort(sort) ? (
-                    <div>
-                        {groupedByDate.map(([date, txs]) => (
-                            <div key={date}>
-                                <div className="bg-[#F8F6F1] px-6 py-2.5 text-sm font-bold text-gray-500">
-                                    {'📅 '}
-                                    {formatDateHeader(date)}
+                ) : (
+                    <>
+                        <div className="space-y-4 p-3 md:hidden">
+                            {groupedByDate.map(([date, txs]) => (
+                                <section key={date}>
+                                    <div className="mb-2 bg-[#F8F6F1] px-3 py-2.5 text-sm font-bold text-gray-500">
+                                        {formatDateHeader(date)}
+                                    </div>
+                                    <div className="space-y-2">
+                                        {txs.map((tx) => (
+                                            <article key={tx.id} className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <p className="min-w-0 truncate font-semibold text-gray-700">{tx.categories?.name ?? 'Tanpa kategori'}</p>
+                                                    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${tx.type === 'income' ? 'bg-[#E8F5E0] text-[#3D6B2C]' : 'bg-[#FCEAE5] text-[#B5543E]'}`}>
+                                                        {tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-1 truncate text-sm text-gray-500">{tx.note || 'Catatan kosong'}</p>
+                                                <div className="mt-2 min-h-5 flex flex-wrap gap-1">
+                                                    {tx.transaction_tags.length > 0 ? tx.transaction_tags.map((tt) => (
+                                                        <span key={tt.tags.id} className="rounded-full bg-white px-2 py-1 text-[11px] text-gray-500">#{tt.tags.name}</span>
+                                                    )) : <span className="text-xs text-gray-400">Tanpa tag</span>}
+                                                </div>
+                                                <div className="mt-3 flex items-center justify-end gap-2">
+                                                    <p className={`mr-auto text-sm font-bold ${tx.type === 'income' ? 'text-[#76C457]' : 'text-[#E07A5F]'}`}>
+                                                        {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
+                                                    </p>
+                                                    <button onClick={() => handleEditClick(tx)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FDF3D9] text-[#D9A331]" aria-label="Edit"><Pencil size={15} /></button>
+                                                    <button onClick={() => setDeleteTarget(tx)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FCE4E4] text-[#E0574B]" aria-label="Hapus"><Trash2 size={15} /></button>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                </section>
+                            ))}
+                        </div>
+                        <div className="hidden">
+                            {transactions.map((tx) => (
+                                <div key={tx.id} className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="truncate font-semibold text-gray-700">{tx.note || 'Tanpa catatan'}</p>
+                                            <p className="mt-1 text-xs text-gray-400">{tx.transaction_date} · {tx.categories?.name ?? 'Tanpa kategori'}</p>
+                                        </div>
+                                        <p className={`shrink-0 text-sm font-bold ${tx.type === 'income' ? 'text-[#76C457]' : 'text-[#E07A5F]'}`}>
+                                            {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
+                                        </p>
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between gap-2">
+                                        <div className="flex min-w-0 flex-wrap gap-1">
+                                            <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${tx.type === 'income' ? 'bg-[#E8F5E0] text-[#3D6B2C]' : 'bg-[#FCEAE5] text-[#B5543E]'}`}>
+                                                {tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                                            </span>
+                                            {tx.transaction_tags.map((tt) => <span key={tt.tags.id} className="rounded-full bg-white px-2 py-1 text-[11px] text-gray-500">#{tt.tags.name}</span>)}
+                                        </div>
+                                        <div className="flex shrink-0 gap-1">
+                                            <button onClick={() => handleEditClick(tx)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FDF3D9] text-[#D9A331]" aria-label="Edit"><Pencil size={15} /></button>
+                                            <button onClick={() => setDeleteTarget(tx)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FCE4E4] text-[#E0574B]" aria-label="Hapus"><Trash2 size={15} /></button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <table className="w-full text-[15px] table-fixed">
+                            ))}
+                        </div>
+                        <div className="hidden overflow-x-auto md:block">
+                            {isNoneSort(sort) ? (
+                                <div>
+                                    {groupedByDate.map(([date, txs]) => (
+                                        <table key={date} className="w-full table-fixed text-[15px]">
+                                            <caption className="caption-top bg-[#F8F6F1] px-6 py-2.5 text-left text-sm font-bold text-gray-500">
+                                                {'📅 '}
+                                                {formatDateHeader(date)}
+                                            </caption>
+                                            <colgroup>
+                                                <col className="w-[150px]" />
+                                                <col className="w-[175px]" />
+                                                <col className="w-[110px]" />
+                                                <col className="w-[130px]" />
+                                                <col className="w-[150px]" />
+                                                <col className="w-[90px]" />
+                                            </colgroup>
+                                            <thead>
+                                                <tr className="text-left text-xs text-gray-500 uppercase bg-gray-50 border-b-2 border-gray-200">
+                                                    <th className="px-6 py-2.5 font-bold">Catatan</th>
+                                                    <th className="px-3 py-2.5 font-bold border-l border-gray-200">Kategori</th>
+                                                    <th className="px-3 py-2.5 font-bold border-l border-gray-200">Jenis</th>
+                                                    <th className="px-3 py-2.5 font-bold border-l border-gray-200">Tag</th>
+                                                    <th
+                                                        className="px-3 py-2.5 font-bold border-l border-gray-200 text-right cursor-pointer"
+                                                        onClick={toggleAmountSort}
+                                                    >
+                                                        {'Jumlah '}
+                                                        {amountSortIndicator}
+                                                    </th>
+                                                    <th className="px-3 py-2.5 font-bold border-l border-gray-200 text-right">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {txs.map((tx) => (
+                                                    <tr key={tx.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                                                        <td className="whitespace-normal break-words px-6 py-3">{tx.note || '-'}</td>
+                                                        <td className="whitespace-normal break-words border-l border-gray-100 px-3 py-3 text-gray-600">{tx.categories?.name ?? '-'}</td>
+                                                        <td className="border-l border-gray-100 px-1 py-3">
+                                                            <span
+                                                                className={`text-xs font-medium px-2 py-1 rounded-full ${tx.type === 'income' ? 'bg-[#E8F5E0] text-[#3D6B2C]' : 'bg-[#FCEAE5] text-[#B5543E]'
+                                                                    }`}
+                                                            >
+                                                                {tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 py-3 border-l border-gray-100">
+                                                            {tx.transaction_tags.length > 0 ? (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {tx.transaction_tags.map((tt) => (
+                                                                        <span key={tt.tags.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                                                            {'#'}
+                                                                            {tt.tags.name}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                '-'
+                                                            )}
+                                                        </td>
+                                                        <td
+                                                            className={`px-3 py-3 border-l border-gray-100 text-right font-medium ${tx.type === 'income' ? 'text-[#76C457]' : 'text-[#E07A5F]'
+                                                                }`}
+                                                        >
+                                                            {tx.type === 'income' ? '+' : '-'}
+                                                            {formatRupiah(tx.amount)}
+                                                        </td>
+                                                        <td className="border-l border-gray-100 px-1 py-3">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <button
+                                                                    onClick={() => handleEditClick(tx)}
+                                                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FDF3D9] text-[#D9A331] hover:opacity-80 transition-opacity"
+                                                                    aria-label="Edit"
+                                                                >
+                                                                    <Pencil size={17} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setDeleteTarget(tx)}
+                                                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FCE4E4] text-[#E0574B] hover:opacity-80 transition-opacity"
+                                                                    aria-label="Hapus"
+                                                                >
+                                                                    <Trash2 size={17} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ))}
+                                </div>
+                            ) : (
+                                <table className="w-full min-w-[850px] table-fixed text-[15px] lg:min-w-0">
                                     <colgroup>
-                                        <col className="w-auto" />
-                                        <col className="w-65" />
-                                        <col className="w-45" />
-                                        <col className="w-45" />
-                                        <col className="w-50" />
-                                        <col className="w-28" />
+                                        <col className="w-[100px]" />
+                                        <col className="w-[145px]" />
+                                        <col className="w-[150px]" />
+                                        <col className="w-[100px]" />
+                                        <col className="w-[120px]" />
+                                        <col className="w-[145px]" />
+                                        <col className="w-[90px]" />
                                     </colgroup>
                                     <thead>
                                         <tr className="text-left text-xs text-gray-500 uppercase bg-gray-50 border-b-2 border-gray-200">
-                                            <th className="px-6 py-2.5 font-bold">Catatan</th>
-                                            <th className="px-3 py-2.5 font-bold border-l border-gray-200">Kategori</th>
-                                            <th className="px-3 py-2.5 font-bold border-l border-gray-200">Jenis</th>
-                                            <th className="px-3 py-2.5 font-bold border-l border-gray-200">Tag</th>
-                                            <th
-                                                className="px-3 py-2.5 font-bold border-l border-gray-200 text-right cursor-pointer"
-                                                onClick={toggleAmountSort}
-                                            >
+                                            <th className="px-6 py-3 font-bold">Tanggal</th>
+                                            <th className="px-3 py-3 font-bold border-l border-gray-200">Catatan</th>
+                                            <th className="px-3 py-3 font-bold border-l border-gray-200">Kategori</th>
+                                            <th className="px-3 py-3 font-bold border-l border-gray-200">Jenis</th>
+                                            <th className="px-3 py-3 font-bold border-l border-gray-200">Tag</th>
+                                            <th className="px-3 py-3 font-bold border-l border-gray-200 text-right cursor-pointer" onClick={toggleAmountSort}>
                                                 {'Jumlah '}
-                                                {amountSortIndicator}
+                                                {sort === 'amount_desc' ? '↓' : '↑'}
                                             </th>
-                                            <th className="px-3 py-2.5 font-bold border-l border-gray-200 text-right">Aksi</th>
+                                            <th className="px-3 py-3 font-bold border-l border-gray-200 text-right">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {txs.map((tx) => (
+                                        {transactions.map((tx) => (
                                             <tr key={tx.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                                                <td className="px-6 py-3 truncate">{tx.note || '-'}</td>
-                                                <td className="px-3 py-3 border-l border-gray-100 text-gray-600 truncate">{tx.categories?.name ?? '-'}</td>
-                                                <td className="px-3 py-3 border-l border-gray-100">
+                                                <td className="px-6 py-3 text-gray-500">{tx.transaction_date}</td>
+                                                <td className="whitespace-normal break-words border-l border-gray-100 px-3 py-3">{tx.note || '-'}</td>
+                                                <td className="whitespace-normal break-words border-l border-gray-100 px-3 py-3 text-gray-600">{tx.categories?.name ?? '-'}</td>
+                                                <td className="border-l border-gray-100 px-1 py-3">
                                                     <span
                                                         className={`text-xs font-medium px-2 py-1 rounded-full ${tx.type === 'income' ? 'bg-[#E8F5E0] text-[#3D6B2C]' : 'bg-[#FCEAE5] text-[#B5543E]'
                                                             }`}
@@ -612,18 +801,9 @@ export default function TransactionsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-3 py-3 border-l border-gray-100">
-                                                    {tx.transaction_tags.length > 0 ? (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {tx.transaction_tags.map((tt) => (
-                                                                <span key={tt.tags.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                                                    {'#'}
-                                                                    {tt.tags.name}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        '-'
-                                                    )}
+                                                    {tx.transaction_tags.length > 0
+                                                        ? tx.transaction_tags.map((tt) => `#${tt.tags.name}`).join(' ')
+                                                        : '-'}
                                                 </td>
                                                 <td
                                                     className={`px-3 py-3 border-l border-gray-100 text-right font-medium ${tx.type === 'income' ? 'text-[#76C457]' : 'text-[#E07A5F]'
@@ -632,18 +812,18 @@ export default function TransactionsPage() {
                                                     {tx.type === 'income' ? '+' : '-'}
                                                     {formatRupiah(tx.amount)}
                                                 </td>
-                                                <td className="px-3 py-3 border-l border-gray-100">
-                                                    <div className="flex items-center justify-end gap-2">
+                                                <td className="border-l border-gray-100 px-1 py-3">
+                                                    <div className="flex items-center justify-end gap-1">
                                                         <button
                                                             onClick={() => handleEditClick(tx)}
-                                                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#FDF3D9] text-[#D9A331] hover:opacity-80 transition-opacity"
+                                                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FDF3D9] text-[#D9A331] hover:opacity-80 transition-opacity"
                                                             aria-label="Edit"
                                                         >
                                                             <Pencil size={17} />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDelete(tx.id)}
-                                                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#FCE4E4] text-[#E0574B] hover:opacity-80 transition-opacity"
+                                                            onClick={() => setDeleteTarget(tx)}
+                                                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FCE4E4] text-[#E0574B] hover:opacity-80 transition-opacity"
                                                             aria-label="Hapus"
                                                         >
                                                             <Trash2 size={17} />
@@ -654,82 +834,9 @@ export default function TransactionsPage() {
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <table className="w-full text-[15px] table-fixed">
-                        <colgroup>
-                            <col className="w-35" />
-                            <col className="w-auto" />
-                            <col className="w-50" />
-                            <col className="w-40" />
-                            <col className="w-40" />
-                            <col className="w-50" />
-                            <col className="w-28" />
-                        </colgroup>
-                        <thead>
-                            <tr className="text-left text-xs text-gray-500 uppercase bg-gray-50 border-b-2 border-gray-200">
-                                <th className="px-6 py-3 font-bold">Tanggal</th>
-                                <th className="px-3 py-3 font-bold border-l border-gray-200">Catatan</th>
-                                <th className="px-3 py-3 font-bold border-l border-gray-200">Kategori</th>
-                                <th className="px-3 py-3 font-bold border-l border-gray-200">Jenis</th>
-                                <th className="px-3 py-3 font-bold border-l border-gray-200">Tag</th>
-                                <th className="px-3 py-3 font-bold border-l border-gray-200 text-right cursor-pointer" onClick={toggleAmountSort}>
-                                    {'Jumlah '}
-                                    {sort === 'amount_desc' ? '↓' : '↑'}
-                                </th>
-                                <th className="px-3 py-3 font-bold border-l border-gray-200 text-right">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {transactions.map((tx) => (
-                                <tr key={tx.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                                    <td className="px-6 py-3 text-gray-500">{tx.transaction_date}</td>
-                                    <td className="px-3 py-3 border-l border-gray-100 truncate">{tx.note || '-'}</td>
-                                    <td className="px-3 py-3 border-l border-gray-100 text-gray-600 truncate">{tx.categories?.name ?? '-'}</td>
-                                    <td className="px-3 py-3 border-l border-gray-100">
-                                        <span
-                                            className={`text-xs font-medium px-2 py-1 rounded-full ${tx.type === 'income' ? 'bg-[#E8F5E0] text-[#3D6B2C]' : 'bg-[#FCEAE5] text-[#B5543E]'
-                                                }`}
-                                        >
-                                            {tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
-                                        </span>
-                                    </td>
-                                    <td className="px-3 py-3 border-l border-gray-100">
-                                        {tx.transaction_tags.length > 0
-                                            ? tx.transaction_tags.map((tt) => `#${tt.tags.name}`).join(' ')
-                                            : '-'}
-                                    </td>
-                                    <td
-                                        className={`px-3 py-3 border-l border-gray-100 text-right font-medium ${tx.type === 'income' ? 'text-[#76C457]' : 'text-[#E07A5F]'
-                                            }`}
-                                    >
-                                        {tx.type === 'income' ? '+' : '-'}
-                                        {formatRupiah(tx.amount)}
-                                    </td>
-                                    <td className="px-3 py-3 border-l border-gray-100">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => handleEditClick(tx)}
-                                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#FDF3D9] text-[#D9A331] hover:opacity-80 transition-opacity"
-                                                aria-label="Edit"
-                                            >
-                                                <Pencil size={17} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(tx.id)}
-                                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#FCE4E4] text-[#E0574B] hover:opacity-80 transition-opacity"
-                                                aria-label="Hapus"
-                                            >
-                                                <Trash2 size={17} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            )}
+                        </div>
+                    </>
                 )}
 
                 {!loading && transactions.length > 0 && (
@@ -790,6 +897,18 @@ export default function TransactionsPage() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="🗑️ Hapus Transaksi"
+                itemType="transaksi"
+                itemName={deleteTarget
+                    ? `"${deleteTarget.note || deleteTarget.categories?.name || 'Tanpa catatan'}" — ${formatRupiah(deleteTarget.amount)}`
+                    : ''}
+                consequence="Transaksi yang dihapus tidak bisa dikembalikan."
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDelete}
+            />
 
             {modalOpen && (
                 <TransactionModal

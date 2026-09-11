@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { Send, Bell, Target, CalendarDays, Unlink, Copy, Check, ExternalLink, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
+import { useToast } from '@/context/ToastContext';
 
 type Profile = {
     daily_reminder_enabled: boolean;
@@ -49,6 +51,7 @@ export default function SettingsPage() {
     const [countdownLabel, setCountdownLabel] = useState<string | null>(null);
     const [generating, setGenerating] = useState(false);
     const [disconnecting, setDisconnecting] = useState(false);
+    const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -56,6 +59,7 @@ export default function SettingsPage() {
     const [monthlySummaryEnabled, setMonthlySummaryEnabled] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedMessage, setSavedMessage] = useState<string | null>(null);
+    const { showToast } = useToast();
 
     const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -163,11 +167,7 @@ export default function SettingsPage() {
     }
 
     async function handleDisconnect() {
-        const confirmed = confirm(
-            'Putuskan koneksi Telegram? Notifikasi otomatis (reminder, budget, ringkasan) tidak akan terkirim lagi sampai kamu hubungkan ulang.'
-        );
-        if (!confirmed) return;
-
+        setDisconnectDialogOpen(false);
         setDisconnecting(true);
         await fetch('/api/telegram/disconnect', { method: 'POST' });
         setCode(null);
@@ -175,6 +175,7 @@ export default function SettingsPage() {
         const data = await fetchProfile();
         applyProfile(data);
         setDisconnecting(false);
+        showToast({ type: 'success', title: 'Koneksi Terputus', description: 'Akun Telegram kamu berhasil diputuskan.' });
     }
 
     async function handleCopyCode() {
@@ -203,6 +204,7 @@ export default function SettingsPage() {
         });
         setSaving(false);
         setSavedMessage('Pengaturan notifikasi tersimpan.');
+        showToast({ type: 'success', title: 'Berhasil Disimpan', description: 'Pengaturan notifikasi berhasil diperbarui.' });
     }
 
     if (profileLoading || !profile) return <LoadingState />;
@@ -247,10 +249,10 @@ export default function SettingsPage() {
                     </p>
                 )}
 
-                {isConnected && (
+            {isConnected && (
                     <button
                         type="button"
-                        onClick={handleDisconnect}
+                        onClick={() => setDisconnectDialogOpen(true)}
                         disabled={disconnecting}
                         className="flex items-center gap-2 border border-[#E07A5F] text-[#E07A5F] text-sm font-bold px-4 py-2.5 rounded-full hover:bg-[#FCEAE5] transition-colors disabled:opacity-50"
                     >
@@ -404,6 +406,18 @@ export default function SettingsPage() {
                     </div>
                 </form>
             </div>
+
+            <ConfirmDialog
+                open={disconnectDialogOpen}
+                title="Putuskan Koneksi"
+                itemType="koneksi Telegram"
+                itemName={profile.telegram_username ? `@${profile.telegram_username}` : 'Telegram'}
+                consequence="Reminder harian, peringatan budget, dan ringkasan bulanan tidak akan terkirim sampai kamu menghubungkan Telegram lagi."
+                confirmLabel="Ya, Putuskan"
+                confirmClassName="bg-[#F0444D] hover:bg-[#DB3740] shadow-[0_8px_18px_rgba(240,68,77,0.22)]"
+                onCancel={() => setDisconnectDialogOpen(false)}
+                onConfirm={handleDisconnect}
+            />
         </div >
     );
 }

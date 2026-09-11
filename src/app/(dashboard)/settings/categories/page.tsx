@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
 import CategoryModal from '@/components/CategoryModal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { Plus, Search, Pencil, Trash2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 type Category = {
     id: string;
@@ -20,6 +22,8 @@ export default function CategoriesPage() {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+    const { showToast } = useToast();
 
     async function loadCategories() {
         const res = await fetch('/api/categories');
@@ -51,22 +55,30 @@ export default function CategoriesPage() {
         setEditingCategory(null);
     }
 
-    async function handleSaved() {
+    async function handleSaved(savedName: string) {
+        const wasEditing = Boolean(editingCategory);
+        const categoryName = savedName || editingCategory?.name || 'kategori';
         closeModal();
         await loadCategories();
+        showToast({
+            type: 'success',
+            title: wasEditing ? 'Berhasil Diperbarui' : 'Berhasil Ditambahkan',
+            description: `Kategori "${categoryName}" berhasil ${wasEditing ? 'diupdate' : 'dibuat'}.`,
+        });
     }
 
-    async function handleDelete(c: Category) {
-        if (c.is_system || c.in_use) return;
-        if (!confirm(`Hapus kategori "${c.name}"?`)) return;
-
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        const c = deleteTarget;
         const res = await fetch(`/api/categories/${c.id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json();
-            alert(data.error ?? 'Kategori tidak dapat dihapus.');
+            showToast({ type: 'error', title: 'Gagal Menghapus', description: data.error ?? 'Kategori tidak dapat dihapus.' });
             return;
         }
+        setDeleteTarget(null);
         await loadCategories();
+        showToast({ type: 'success', title: 'Berhasil Dihapus', description: `Kategori "${c.name}" berhasil dihapus.` });
     }
 
     const filtered = categories.filter((c) =>
@@ -108,7 +120,7 @@ export default function CategoriesPage() {
                         </button>
                     )}
                     <button
-                        onClick={() => handleDelete(c)}
+                        onClick={() => setDeleteTarget(c)}
                         disabled={deleteDisabled}
                         className={`w-9 h-9 flex items-center justify-center rounded-xl transition-opacity ${deleteDisabled
                             ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
@@ -194,6 +206,15 @@ export default function CategoriesPage() {
                     onSaved={handleSaved}
                 />
             )}
+            <ConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="Hapus Kategori"
+                itemType="kategori"
+                itemName={deleteTarget?.name ?? ''}
+                consequence="Kategori ini belum digunakan di transaksi manapun."
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 }

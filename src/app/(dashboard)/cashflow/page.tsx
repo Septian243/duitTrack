@@ -128,7 +128,7 @@ export default function CashflowPage() {
             ) : (
                 <>
                     {/* Stat cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#E07A5F]/10 rounded-full blur-xl" />
                             <div className="relative">

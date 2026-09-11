@@ -19,7 +19,7 @@ export default function CategoryModal({
     mode: 'add' | 'edit';
     initialData?: Category;
     onClose: () => void;
-    onSaved: () => void;
+    onSaved: (name: string) => void;
 }) {
     const [type, setType] = useState<'income' | 'expense'>(initialData?.type ?? 'expense');
     const [name, setName] = useState(initialData?.name ?? '');
@@ -55,16 +55,16 @@ export default function CategoryModal({
         }
 
         setSaving(false);
-        onSaved();
+        onSaved(name.trim());
     }
 
     const inputClass =
         'w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#76C457] transition-colors';
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
+                className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100 shrink-0">

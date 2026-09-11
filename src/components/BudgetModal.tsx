@@ -153,7 +153,7 @@ export default function BudgetModal({
         : 'Budget Keseluruhan';
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
                 ref={modalRef}
                 className="flex max-h-[96vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"

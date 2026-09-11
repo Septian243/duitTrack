@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, User, Moon, Sun } from 'lucide-react';
+import { Search, Bell, User, Moon, Sun, Menu } from 'lucide-react';
 import { notificationIcons, formatRelativeTime } from '@/lib/notifications/notificationMeta';
 import type { NotificationType } from '@/lib/notifications/createNotification';
 import { createClient } from '@/lib/supabase/client';
@@ -38,10 +38,12 @@ export default function TopBar({
     userName,
     userId,
     userAvatarUrl,
+    onOpenSidebar,
 }: {
     userName: string | null;
     userId: string;
     userAvatarUrl: string | null;
+    onOpenSidebar?: () => void;
 }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -218,15 +220,20 @@ export default function TopBar({
 
     return (
         <>
-            <header className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
-                <div>
-                    <h1 className="text-2xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
+            <header className="flex items-center justify-between gap-3 bg-white px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+                <div className="flex min-w-0 items-center gap-3">
+                    <button type="button" onClick={onOpenSidebar} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 lg:hidden" aria-label="Buka menu">
+                        <Menu size={20} />
+                    </button>
+                    <div className="min-w-0">
+                    <h1 className="truncate text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22] sm:text-2xl">
                         {page.title}
                     </h1>
-                    {page.subtitle && <p className="text-sm text-gray-400 mt-0.5">{page.subtitle}</p>}
+                    {page.subtitle && <p className="hidden text-sm text-gray-400 mt-0.5 sm:block">{page.subtitle}</p>}
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex shrink-0 items-center gap-2 sm:gap-4">
                     {/* Search: ikon bulat -> expand jadi input */}
                     <div className="relative" ref={containerRef}>
                         <div

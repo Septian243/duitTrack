@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { signOut } from '@/lib/supabase/actions';
 import { useTheme } from '@/context/ThemeContext';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const navItems = [
     { href: '/', label: 'Dashboard', icon: House },
@@ -36,14 +37,30 @@ const navSections = [
     { label: 'SETTING', items: navItems.slice(6) },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+    mobileOpen = false,
+    onMobileClose,
+}: {
+    mobileOpen?: boolean;
+    onMobileClose?: () => void;
+}) {
     const pathname = usePathname();
     const { theme } = useTheme();
     const [isMinimized, setIsMinimized] = useState(false);
     const [tooltip, setTooltip] = useState<{ label: string; top: number; left: number } | null>(null);
+    const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
     return (
-        <aside className={`${isMinimized ? 'w-20' : 'w-64'} relative z-50 h-screen shrink-0 overflow-visible bg-white border-r border-gray-100 flex flex-col transition-[width] duration-300`}>
+        <>
+            {mobileOpen && (
+                <button
+                    type="button"
+                    aria-label="Tutup menu"
+                    onClick={onMobileClose}
+                    className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                />
+            )}
+        <aside className={`${isMinimized ? 'lg:w-20' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} fixed inset-y-0 left-0 z-50 w-72 shrink-0 overflow-visible border-r border-gray-100 bg-white flex flex-col transition-[width,transform] duration-300 lg:relative lg:h-screen`}>
             {/* Logo + wordmark */}
             <div className={`flex shrink-0 items-center border-b border-gray-100 px-4 py-5 ${isMinimized ? 'justify-center' : 'justify-between'}`}>
                 {isMinimized ? (
@@ -116,6 +133,7 @@ export default function Sidebar() {
                                 >
                                     <Link
                                         href={item.href}
+                                        onClick={onMobileClose}
                                         className={`flex items-center rounded-xl text-base font-medium transition-colors
                   ${isMinimized ? 'justify-center px-3 py-3.5' : 'gap-4 px-4 py-3.5'}
                   ${isActive ? 'bg-[#76C457] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
@@ -141,9 +159,10 @@ export default function Sidebar() {
 
             {/* Logout */}
             <div className={`${isMinimized ? 'px-2' : 'px-4'} flex items-center gap-2 py-4 border-t border-gray-100`}>
-                <form action={signOut} className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1">
                     <button
-                        type="submit"
+                        type="button"
+                        onClick={() => setLogoutDialogOpen(true)}
                         title={isMinimized ? 'Keluar' : undefined}
                         className={`flex w-full items-center rounded-xl text-sm font-medium text-red-500 transition-colors hover:bg-red-50
               ${isMinimized ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}`}
@@ -151,8 +170,22 @@ export default function Sidebar() {
                         <LogOut size={isMinimized ? 20 : 21} />
                         {!isMinimized && 'Log Out'}
                     </button>
-                </form>
+                </div>
             </div>
+
         </aside>
+        <ConfirmDialog
+            open={logoutDialogOpen}
+            title="Keluar dari Akun"
+            itemType="akun"
+            itemName="DuitTrack"
+            question="Yakin ingin keluar dari DuitTrack?"
+            consequence="Kamu bisa masuk lagi kapan saja menggunakan email dan password yang sama."
+            confirmLabel="Ya, Keluar"
+            confirmClassName="bg-[#F0444D] hover:bg-[#DB3740] shadow-[0_8px_18px_rgba(240,68,77,0.22)]"
+            onCancel={() => setLogoutDialogOpen(false)}
+            onConfirm={signOut}
+        />
+        </>
     );
 }

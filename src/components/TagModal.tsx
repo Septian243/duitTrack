@@ -8,7 +8,7 @@ export default function TagModal({
     onSaved,
 }: {
     onClose: () => void;
-    onSaved: () => void;
+    onSaved: (name: string) => void;
 }) {
     const [name, setName] = useState('');
     const [saving, setSaving] = useState(false);
@@ -39,13 +39,13 @@ export default function TagModal({
         }
 
         setSaving(false);
-        onSaved();
+        onSaved(name.trim());
     }
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden"
+                className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100 shrink-0">

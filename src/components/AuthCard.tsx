@@ -195,7 +195,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
     const hint = usernameHint[usernameStatus];
 
     return (
-        <div className="relative w-full max-w-4xl min-h-[600px] mx-auto my-12 rounded-[20px] shadow-2xl overflow-hidden bg-white">
+        <div className="relative mx-auto my-12 min-h-[600px] w-full max-w-4xl overflow-hidden rounded-[20px] bg-white shadow-2xl max-md:my-0 max-md:min-h-screen max-md:max-w-none max-md:rounded-none max-md:shadow-none">
             {/* Sign Up form */}
             <div
                 className={`absolute top-0 left-0 w-1/2 h-full transition-all duration-[600ms] ease-in-out
@@ -204,7 +204,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
           ${isSignUp ? 'max-md:block' : 'max-md:hidden'}`}
             >
                 <form
-                    className="flex scale-[0.92] flex-col items-center justify-center h-full origin-center px-10 py-3 text-center bg-white"
+                    className="flex h-full scale-[0.92] flex-col items-center justify-center bg-white px-10 py-3 text-center origin-center max-md:min-h-screen max-md:scale-100 max-md:px-6 max-md:py-10"
                     onSubmit={handleSignUp}
                 >
                     <Image src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="DuitTrack" width={140} height={140} loading="eager" className={logoClass} />
@@ -259,6 +259,9 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                     >
                         {signUpLoading ? 'Memproses...' : 'Register'}
                     </button>
+                    <button type="button" onClick={() => setMode('signin')} className="mt-4 text-sm text-gray-500 hover:underline md:hidden">
+                        Sudah punya akun? Login di sini
+                    </button>
                 </form>
             </div>
 
@@ -270,7 +273,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
           ${isSignUp ? 'max-md:hidden' : 'max-md:block'}`}
             >
                 <form
-                    className="flex flex-col items-center justify-center h-full px-10 text-center bg-white -translate-y-8"
+                    className="flex h-full flex-col items-center justify-center bg-white px-10 text-center -translate-y-8 max-md:min-h-screen max-md:translate-y-0 max-md:px-6 max-md:py-10"
                     onSubmit={handleSignIn}
                 >
                     <Image src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="DuitTrack" width={160} height={160} loading="eager" className={logoClass} />
@@ -300,6 +303,9 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
                         className="rounded-full bg-[#76C457] text-white text-xs font-bold uppercase tracking-wider px-11 py-3 mt-4 hover:opacity-90 transition-opacity disabled:opacity-50"
                     >
                         {signInLoading ? 'Memproses...' : 'Login'}
+                    </button>
+                    <button type="button" onClick={() => setMode('signup')} className="mt-4 text-sm text-gray-500 hover:underline md:hidden">
+                        Belum punya akun? Daftar di sini
                     </button>
                 </form>
             </div>

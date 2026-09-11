@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
 import TagModal from '@/components/TagModal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { Plus, X } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 type Tag = {
     id: string;
@@ -16,6 +18,8 @@ export default function TagsPage() {
     const [tags, setTags] = useState<Tag[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
+    const { showToast } = useToast();
 
     async function loadTags() {
         const res = await fetch('/api/tags');
@@ -32,22 +36,24 @@ export default function TagsPage() {
         init();
     }, []);
 
-    async function handleSaved() {
+    async function handleSaved(savedName: string) {
         setModalOpen(false);
         await loadTags();
+        showToast({ type: 'success', title: 'Berhasil Ditambahkan', description: `Tag "${savedName}" berhasil dibuat.` });
     }
 
-    async function handleDelete(tag: Tag) {
-        if (tag.in_use) return;
-        if (!confirm(`Hapus tag "${tag.name}"?`)) return;
-
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        const tag = deleteTarget;
         const res = await fetch(`/api/tags/${tag.id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json();
-            alert(data.error ?? 'Tag tidak dapat dihapus.');
+            showToast({ type: 'error', title: 'Gagal Menghapus', description: data.error ?? 'Tag tidak dapat dihapus.' });
             return;
         }
+        setDeleteTarget(null);
         await loadTags();
+        showToast({ type: 'success', title: 'Berhasil Dihapus', description: `Tag "${tag.name}" berhasil dihapus.` });
     }
 
     if (loading) return <LoadingState />;
@@ -55,12 +61,6 @@ export default function TagsPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#1B2A22] font-[family-name:var(--font-sora)]">
-                        Tag
-                    </h1>
-                    <p className="mt-0.5 text-sm text-gray-400">Kelola label pendek untuk transaksimu</p>
-                </div>
                 <button
                     type="button"
                     onClick={() => setModalOpen(true)}
@@ -93,7 +93,7 @@ export default function TagsPage() {
                                     )}
                                     <button
                                         type="button"
-                                        onClick={() => handleDelete(tag)}
+                                        onClick={() => setDeleteTarget(tag)}
                                         disabled={disabled}
                                         title={title}
                                         className={`w-5 h-5 flex items-center justify-center rounded-full transition-colors ${disabled
@@ -111,6 +111,17 @@ export default function TagsPage() {
             </div>
 
             {modalOpen && <TagModal onClose={() => setModalOpen(false)} onSaved={handleSaved} />}
+            <ConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="Hapus Tag"
+                itemType="tag"
+                itemName={deleteTarget?.name ?? ''}
+                consequence={deleteTarget?.usage_count
+                    ? `Tag ini akan hilang dari ${deleteTarget.usage_count} transaksi yang memakainya.`
+                    : 'Tag ini belum dipakai di transaksi manapun.'}
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 }
