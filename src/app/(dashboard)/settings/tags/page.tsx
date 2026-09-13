@@ -56,7 +56,7 @@ export default function TagsPage() {
         showToast({ type: 'success', title: 'Berhasil Dihapus', description: `Tag "${tag.name}" berhasil dihapus.` });
     }
 
-    if (loading) return <LoadingState />;
+    if (loading) return <LoadingState variant="tags" />;
 
     return (
         <div>

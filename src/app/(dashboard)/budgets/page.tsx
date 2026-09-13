@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
+import AnimatedNumber from '@/components/AnimatedNumber';
 import MonthToolbar from '@/components/MonthToolbar';
 import BudgetModal from '@/components/BudgetModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -39,6 +40,7 @@ export default function BudgetsPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [staticLoading, setStaticLoading] = useState(true);
     const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -59,11 +61,13 @@ export default function BudgetsPage() {
         let ignore = false;
 
         async function loadBudgets() {
+            if (hasLoadedInitialData) setRefreshing(true);
             const res = await fetch(`/api/budgets?month=${selectedMonth}`);
             const data = await res.json();
             if (!ignore) {
                 setBudgets(data);
                 setHasLoadedInitialData(true);
+                setRefreshing(false);
             }
         }
 
@@ -139,7 +143,7 @@ export default function BudgetsPage() {
                         </div>
                         <div className="bg-gray-100 h-2 rounded-full overflow-hidden mb-1">
                             <div
-                                className="h-full rounded-full transition-all"
+                                className="progress-fill h-full rounded-full transition-all"
                                 style={{ width: `${Math.min(pct, 100)}%`, background: statusColor(pct) }}
                             />
                         </div>
@@ -168,10 +172,15 @@ export default function BudgetsPage() {
         );
     }
 
-    if (staticLoading || !hasLoadedInitialData) return <LoadingState />;
+    if (staticLoading || !hasLoadedInitialData) return <LoadingState variant="budgets" />;
 
     return (
-        <div>
+        <div className={refreshing ? 'data-refreshing relative' : 'relative'} aria-busy={refreshing}>
+            {refreshing && (
+                <div className="refresh-overlay absolute inset-0 z-20 min-h-full bg-[#F5FAF3] px-0" aria-live="polite">
+                    <LoadingState variant="budgets" />
+                </div>
+            )}
             <MonthToolbar
                 selectedMonth={selectedMonth}
                 onChange={setSelectedMonth}
@@ -193,7 +202,7 @@ export default function BudgetsPage() {
                                     Total Budget
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(totalBudget)}
+                            <AnimatedNumber value={totalBudget} formatter={formatMoney} />
                                 </p>
                             </div>
                         </div>
@@ -210,7 +219,7 @@ export default function BudgetsPage() {
                                     Total Terpakai
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(totalSpent)}
+                            <AnimatedNumber value={totalSpent} formatter={formatMoney} />
                                 </p>
                             </div>
                         </div>
@@ -230,7 +239,7 @@ export default function BudgetsPage() {
                                     className={`text-xl font-bold font-[family-name:var(--font-sora)] ${totalRemaining < 0 ? 'text-[#E07A5F]' : 'text-[#1B2A22]'
                                         }`}
                                 >
-                                    {formatMoney(totalRemaining)}
+                                    <AnimatedNumber value={totalRemaining} formatter={formatMoney} />
                                 </p>
                             </div>
                         </div>

@@ -156,7 +156,7 @@ export default function BudgetModal({
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="flex max-h-[96vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                className="modal-enter flex max-h-[96vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100 shrink-0">

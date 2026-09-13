@@ -57,7 +57,7 @@ export default function Sidebar({
                     type="button"
                     aria-label="Tutup menu"
                     onClick={onMobileClose}
-                    className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                    className="fixed inset-0 z-40 bg-black/40 sidebar-overlay-enter lg:hidden"
                 />
             )}
         <aside className={`${isMinimized ? 'lg:w-20' : 'lg:w-64'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} fixed inset-y-0 left-0 z-50 w-72 shrink-0 overflow-visible border-r border-gray-100 bg-white flex flex-col transition-[width,transform] duration-300 lg:relative lg:h-screen`}>

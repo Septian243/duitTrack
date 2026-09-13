@@ -324,7 +324,7 @@ export default function TransactionsPage() {
         );
     }
 
-    if (!hasLoadedInitialData || staticLoading) return <LoadingState />;
+    if (!hasLoadedInitialData || staticLoading) return <LoadingState variant="transactions" />;
 
     return (
         <div>
@@ -603,7 +603,7 @@ export default function TransactionsPage() {
             <div className="relative overflow-hidden rounded-2xl bg-white shadow-sm">
                 {loading ? (
                     <div className="p-10">
-                        <LoadingState />
+                        <LoadingState variant="transactions" />
                     </div>
                 ) : transactions.length === 0 ? (
                     <p className="text-sm text-gray-400 text-center py-10">Tidak ada transaksi ditemukan.</p>

@@ -207,7 +207,7 @@ export default function SettingsPage() {
         showToast({ type: 'success', title: 'Berhasil Disimpan', description: 'Pengaturan notifikasi berhasil diperbarui.' });
     }
 
-    if (profileLoading || !profile) return <LoadingState />;
+    if (profileLoading || !profile) return <LoadingState variant="settings" />;
 
     const isConnected = !!profile.telegram_chat_id;
     const deepLinkUrl = botUsername && code ? `https://t.me/${botUsername}?start=${code}` : null;

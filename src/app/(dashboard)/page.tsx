@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import LoadingState from '@/components/LoadingState';
+import AnimatedNumber from '@/components/AnimatedNumber';
 import MonthToolbar, { shiftMonth } from '@/components/MonthToolbar';
 import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -99,13 +100,18 @@ export default function DashboardPage() {
         null
     );
     const [loading, setLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const hasLoadedRef = useRef(false);
 
     // Fetch data yang tergantung bulan terpilih di toolbar
     useEffect(() => {
         let ignore = false;
 
         async function load() {
-            setLoading(true);
+            const isInitialLoad = !hasLoadedRef.current;
+            setLoading(isInitialLoad);
+            setRefreshing(!isInitialLoad);
             const [sumRes, prevSumRes, catRes, profileRes, budgetsRes, transactionsRes, cashflowRes, streakRes] =
                 await Promise.all([
                     fetch(`/api/summary?month=${selectedMonth}`),
@@ -132,6 +138,9 @@ export default function DashboardPage() {
                 setCashflow(cashflowData.projections?.[0] ?? null);
                 setStreak(streakData);
                 setLoading(false);
+                setRefreshing(false);
+                setHasLoaded(true);
+                hasLoadedRef.current = true;
             }
         }
 
@@ -159,7 +168,7 @@ export default function DashboardPage() {
         };
     }, [trendMonths]);
 
-    if (loading) return <LoadingState />;
+    if (loading && !hasLoaded) return <LoadingState variant="dashboard" />;
 
     const mainSummary = summary[0] ?? { currency: 'IDR', income: 0, expense: 0, balance: 0 };
     const prevMainSummary = prevSummary.find((s) => s.currency === mainSummary.currency);
@@ -196,7 +205,12 @@ export default function DashboardPage() {
     const showReminder = streak && (!streak.hasTransactionToday || streak.streakDays >= 2);
 
     return (
-        <div>
+        <div className={refreshing ? 'data-refreshing relative' : 'relative'} aria-busy={refreshing}>
+            {refreshing && (
+                <div className="refresh-overlay absolute inset-0 z-20 min-h-full bg-[#F5FAF3] px-0" aria-live="polite">
+                    <LoadingState variant="dashboard" />
+                </div>
+            )}
             {/* Hero banner */}
             <div className="bg-gradient-to-br from-[#0F3D2E] via-[#1B4D3A] to-[#3A7A5C] rounded-3xl mb-8 relative overflow-hidden">
                 <div
@@ -276,7 +290,7 @@ export default function DashboardPage() {
                                     Saldo Bulan Ini
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(mainSummary.balance, mainSummary.currency)}
+                                    <AnimatedNumber value={mainSummary.balance} formatter={(value) => formatMoney(value, mainSummary.currency)} />
                                 </p>
                                 {balanceTrend.isUp !== null ? (
                                     <p
@@ -303,7 +317,7 @@ export default function DashboardPage() {
                                     Total Pengeluaran
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(mainSummary.expense, mainSummary.currency)}
+                                    <AnimatedNumber value={mainSummary.expense} formatter={(value) => formatMoney(value, mainSummary.currency)} />
                                 </p>
                                 {expenseTrend.isUp !== null ? (
                                     <p
@@ -330,7 +344,7 @@ export default function DashboardPage() {
                                     Rata-rata Pengeluaran/Hari
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(avgPerDay, mainSummary.currency)}
+                                    <AnimatedNumber value={avgPerDay} formatter={(value) => formatMoney(value, mainSummary.currency)} />
                                 </p>
                                 {avgTrend.isUp !== null ? (
                                     <p
@@ -363,7 +377,7 @@ export default function DashboardPage() {
                                     className={`text-xl font-bold font-[family-name:var(--font-sora)] ${projectedBalance >= 0 ? 'text-[#1B2A22]' : 'text-[#E07A5F]'
                                         }`}
                                 >
-                                    {formatMoney(projectedBalance, mainSummary.currency)}
+                                    <AnimatedNumber value={projectedBalance} formatter={(value) => formatMoney(value, mainSummary.currency)} />
                                 </p>
                                 <p className="text-xs text-gray-400 mt-1">
                                     {isCurrentMonth

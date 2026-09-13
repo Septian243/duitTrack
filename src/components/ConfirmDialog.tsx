@@ -62,7 +62,7 @@ export default function ConfirmDialog({
             }}
         >
             <section
-                className="w-full max-w-[624px] overflow-hidden rounded-xl bg-white shadow-2xl"
+                className="modal-enter w-full max-w-[624px] overflow-hidden rounded-xl bg-white shadow-2xl"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="confirm-dialog-title"

@@ -136,7 +136,7 @@ export default function CategoriesPage() {
         );
     }
 
-    if (loading) return <LoadingState />;
+    if (loading) return <LoadingState variant="categories" />;
 
     return (
         <div>

@@ -88,7 +88,7 @@ export default function CashflowPage() {
         };
     }, [selectedMonth]);
 
-    if (loading || !data) return <LoadingState />;
+    if (loading || !data) return <LoadingState variant="cashflow" />;
 
     const main = data.projections[0] ?? {
         currency: 'IDR',
