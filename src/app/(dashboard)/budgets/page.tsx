@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import MonthToolbar from '@/components/MonthToolbar';
@@ -41,6 +41,7 @@ export default function BudgetsPage() {
     const [staticLoading, setStaticLoading] = useState(true);
     const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const hasLoadedInitialDataRef = useRef(false);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -61,12 +62,13 @@ export default function BudgetsPage() {
         let ignore = false;
 
         async function loadBudgets() {
-            if (hasLoadedInitialData) setRefreshing(true);
+            if (hasLoadedInitialDataRef.current) setRefreshing(true);
             const res = await fetch(`/api/budgets?month=${selectedMonth}`);
             const data = await res.json();
             if (!ignore) {
                 setBudgets(data);
                 setHasLoadedInitialData(true);
+                hasLoadedInitialDataRef.current = true;
                 setRefreshing(false);
             }
         }
