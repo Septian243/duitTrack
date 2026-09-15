@@ -10,6 +10,7 @@ export type ParsedTransaction = {
     type: 'income' | 'expense';
     categoryName: string;
     note: string;
+    matched: boolean;
 };
 
 const INCOME_SIGNAL_WORDS = ['gaji', 'bonus', 'thr', 'dividen', 'investasi', 'terima', 'dapat'];
@@ -39,17 +40,20 @@ function detectCategory(
     text: string,
     keywordMap: Record<string, string[]>,
     fallback: string
-): string {
+): { categoryName: string; matched: boolean } {
     const lower = text.toLowerCase();
     for (const [category, keywords] of Object.entries(keywordMap)) {
         if (keywords.some((kw) => lower.includes(kw))) {
-            return category;
+            return { categoryName: category, matched: true };
         }
     }
-    return fallback;
+    return { categoryName: fallback, matched: false };
 }
 
-export function parseTransaction(text: string): ParsedTransaction | null {
+export function parseTransaction(
+    text: string,
+    extraKeywordMap?: Record<string, string[]>
+): ParsedTransaction | null {
     const amount = parseAmount(text);
     if (amount === null || amount <= 0) {
         return null;
@@ -57,16 +61,24 @@ export function parseTransaction(text: string): ParsedTransaction | null {
 
     const lower = text.toLowerCase();
     const isIncome = INCOME_SIGNAL_WORDS.some((w) => lower.includes(w));
-
     const type: 'income' | 'expense' = isIncome ? 'income' : 'expense';
-    const categoryName = isIncome
+
+    if (extraKeywordMap) {
+        const learned = detectCategory(text, extraKeywordMap, '__none__');
+        if (learned.matched) {
+            return { amount, type, categoryName: learned.categoryName, note: text.trim(), matched: true };
+        }
+    }
+
+    const builtIn = isIncome
         ? detectCategory(text, INCOME_KEYWORDS, DEFAULT_INCOME_CATEGORY)
         : detectCategory(text, EXPENSE_KEYWORDS, DEFAULT_EXPENSE_CATEGORY);
 
     return {
         amount,
         type,
-        categoryName,
+        categoryName: builtIn.categoryName,
         note: text.trim(),
+        matched: builtIn.matched,
     };
 }
