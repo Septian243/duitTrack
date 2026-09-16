@@ -8,8 +8,6 @@ export const EXPENSE_KEYWORDS: Record<string, string[]> = {
         'bensin', 'grab', 'gojek', 'ojek', 'ojol', 'parkir', 'tol', 'bus',
         'kereta', 'krl', 'pertamax', 'pertalite', 'transportasi',
     ],
-    // "beli" is an action word, not a category signal. Leaving it here
-    // makes every message such as "beli sate" look like Belanja.
     Belanja: ['belanja', 'shopee', 'tokopedia', 'baju', 'sepatu'],
     Tagihan: [
         'listrik', 'pulsa', 'paket data', 'wifi', 'internet', 'kos', 'kontrakan',
