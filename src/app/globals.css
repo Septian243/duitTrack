@@ -59,15 +59,6 @@
   animation: page-content-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.data-refreshing {
-  animation: data-refreshing 220ms ease-out both;
-}
-
-@keyframes data-refreshing {
-  from { opacity: 0.82; }
-  to { opacity: 1; }
-}
-
 .modal-enter {
   animation: modal-enter 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }

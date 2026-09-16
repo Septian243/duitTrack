@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import MonthToolbar from '@/components/MonthToolbar';
 import AnimatedNumber from '@/components/AnimatedNumber';
@@ -63,6 +63,7 @@ export default function CashflowPage() {
     const [data, setData] = useState<CashflowData | null>(null);
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [loading, setLoading] = useState(true);
+    const hasLoadedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -70,7 +71,8 @@ export default function CashflowPage() {
         const controller = new AbortController();
 
         async function load() {
-            setLoading(true);
+            const isInitialLoad = !hasLoadedRef.current;
+            setLoading(isInitialLoad);
             setError(null);
             const [cfRes, budRes] = await Promise.all([
                 fetch(`/api/cashflow?month=${selectedMonth}`, { signal: controller.signal }),
@@ -82,6 +84,7 @@ export default function CashflowPage() {
                 setData(cfData);
                 setBudgets(budData);
                 setLoading(false);
+                hasLoadedRef.current = true;
             }
         }
 
@@ -127,8 +130,6 @@ export default function CashflowPage() {
         budgets.filter((b) => b.category_id !== null).map((b) => [b.category_id as string, b])
     );
 
-    const hasData = viewData.dailySeries.some((d) => d.actual !== null && d.actual > 0) || main.totalSoFar > 0;
-
     return (
         <div className="page-enter">
             <MonthToolbar
@@ -139,13 +140,7 @@ export default function CashflowPage() {
             />
             {error && <div className="mb-6 rounded-2xl border border-[#E07A5F]/30 bg-[#FCEAE5] px-4 py-3 text-sm text-[#A84D3A]" role="alert">{error}</div>}
 
-            {!loading && !hasData ? (
-                <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
-                    <Activity size={28} className="text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-400">Belum ada data pengeluaran di bulan ini.</p>
-                </div>
-            ) : (
-                <>
+            <>
                     {/* Stat cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
@@ -235,8 +230,12 @@ export default function CashflowPage() {
                         <h3 className="font-bold text-[#1B2A22] font-[family-name:var(--font-sora)] mb-5">
                             Pengeluaran Kumulatif: Aktual vs Proyeksi
                         </h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            {loading ? <div className="h-[300px] rounded-xl bg-gray-100 skeleton-pulse" /> : <LineChart data={viewData.dailySeries}>
+                        {loading ? <div className="h-[300px] rounded-xl bg-gray-100 skeleton-pulse" /> : viewData.dailySeries.length === 0 ? (
+                            <div className="flex h-[300px] items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
+                                Belum ada data pengeluaran untuk ditampilkan.
+                            </div>
+                        ) : <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={viewData.dailySeries}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 <XAxis dataKey="day" tick={{ fontSize: 12 }} label={{ value: 'Hari', position: 'insideBottom', offset: -5, fontSize: 12 }} />
                                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
@@ -272,8 +271,8 @@ export default function CashflowPage() {
                                     connectNulls
                                     name="Proyeksi"
                                 />
-                            </LineChart>}
-                        </ResponsiveContainer>
+                            </LineChart>
+                        </ResponsiveContainer>}
                     </div>
 
                     {/* Perbandingan dengan budget */}
@@ -361,8 +360,7 @@ export default function CashflowPage() {
                             </div>
                         )}
                     </div>
-                </>
-            )}
+            </>
         </div>
     );
 }

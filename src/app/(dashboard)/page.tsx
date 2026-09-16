@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import {
     Wallet, TrendingDown, Target, ArrowUp, ArrowDown, Activity,
-    PieChart as PieChartIcon, TrendingUp, Compass, Receipt, Bell, Flame, CalendarDays,
+    PieChart as PieChartIcon, TrendingUp, Compass, Receipt, Bell, Flame,
 } from 'lucide-react';
 
 type SummaryItem = { currency: string; income: number; expense: number; balance: number };
@@ -111,7 +111,6 @@ export default function DashboardPage() {
     const [trendLoading, setTrendLoading] = useState(true);
     const [dashboardError, setDashboardError] = useState<string | null>(null);
     const [trendError, setTrendError] = useState<string | null>(null);
-    const [refreshing, setRefreshing] = useState(false);
     const hasLoadedRef = useRef(false);
     const { username } = useProfile();
 
@@ -125,13 +124,16 @@ export default function DashboardPage() {
         let ignore = false;
         const controller = new AbortController();
         const isInitialLoad = !hasLoadedRef.current;
-        setRefreshing(!isInitialLoad);
-        setSummaryLoading(true);
-        setCategoryLoading(true);
-        setBudgetLoading(true);
-        setTransactionsLoading(true);
-        setCashflowLoading(true);
-        setStreakLoading(true);
+        // Skeleton hanya untuk load pertama. Saat ganti bulan, pertahankan
+        // data lama sampai data bulan baru siap agar halaman tidak berkedip.
+        if (isInitialLoad) {
+            setSummaryLoading(true);
+            setCategoryLoading(true);
+            setBudgetLoading(true);
+            setTransactionsLoading(true);
+            setCashflowLoading(true);
+            setStreakLoading(true);
+        }
 
         async function loadDashboard() {
             try {
@@ -153,7 +155,6 @@ export default function DashboardPage() {
                     setTransactionsLoading(false);
                     setCashflowLoading(false);
                     setStreakLoading(false);
-                    setRefreshing(false);
                     hasLoadedRef.current = true;
                 }
             } catch {
@@ -165,7 +166,6 @@ export default function DashboardPage() {
                     setTransactionsLoading(false);
                     setCashflowLoading(false);
                     setStreakLoading(false);
-                    setRefreshing(false);
                 }
             }
         }
@@ -209,8 +209,6 @@ export default function DashboardPage() {
 
     const mainSummary = summary[0] ?? { currency: 'IDR', income: 0, expense: 0, balance: 0 };
     const prevMainSummary = prevSummary.find((s) => s.currency === mainSummary.currency);
-    const monthHasTransactions = summary.length > 0;
-
     const balanceTrend = calcTrend(mainSummary.balance, prevMainSummary?.balance);
     const expenseTrend = calcTrend(mainSummary.expense, prevMainSummary?.expense);
 
@@ -242,7 +240,7 @@ export default function DashboardPage() {
     const showReminder = !streakLoading && streak && (!streak.hasTransactionToday || streak.streakDays >= 2);
 
     return (
-        <div className={`${refreshing ? 'data-refreshing ' : ''}page-enter relative`} aria-busy={refreshing}>
+        <div className="page-enter relative">
             {/* Hero banner */}
             <div className="bg-gradient-to-br from-[#0F3D2E] via-[#1B4D3A] to-[#3A7A5C] rounded-3xl mb-8 relative overflow-hidden">
                 <div
@@ -308,15 +306,7 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {!summaryLoading && !monthHasTransactions ? (
-                <div className="bg-white rounded-2xl shadow-sm p-10 mb-8 text-center">
-                    <CalendarDays size={28} className="text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-400">
-                        Belum ada transaksi di bulan ini.
-                    </p>
-                </div>
-            ) : (
-                <>
+            <>
                     {/* Baris 1: 4 stat cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         {/* 1. Saldo Bulan Ini */}
@@ -533,8 +523,7 @@ export default function DashboardPage() {
                             )}
                         </div>
                     </div>
-                </>
-            )}
+            </>
 
             {/* Baris 3: Tren Income vs Expense - full width, independen dari toolbar bulan */}
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
@@ -580,8 +569,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Baris 4: Transaksi Terbaru - full width */}
-            {!summaryLoading && monthHasTransactions && (
-                <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="bg-white rounded-2xl shadow-sm p-6">
                     <CardHeader icon={Receipt} title="Transaksi Terbaru" />
                     {transactionsLoading ? (
                         <WidgetSkeleton className="h-40" />
@@ -608,8 +596,7 @@ export default function DashboardPage() {
                     <Link href="/transactions" className="inline-block text-sm text-[#76C457] font-medium mt-4 hover:underline">
                         Lihat semua transaksi →
                     </Link>
-                </div>
-            )}
+            </div>
         </div>
     );
 }

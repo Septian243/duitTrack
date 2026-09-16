@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import MonthToolbar from '@/components/MonthToolbar';
 import BudgetModal from '@/components/BudgetModal';
@@ -40,8 +40,6 @@ export default function BudgetsPage() {
     const [staticLoading, setStaticLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
-    const hasLoadedInitialDataRef = useRef(false);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -72,22 +70,18 @@ export default function BudgetsPage() {
         const controller = new AbortController();
 
         async function loadBudgets() {
-            if (hasLoadedInitialDataRef.current) setRefreshing(true);
             const res = await fetch(`/api/budgets?month=${selectedMonth}`, { signal: controller.signal });
             if (!res.ok) throw new Error('Gagal memuat budget');
             const data = await res.json();
             if (!ignore) {
                 setBudgets(data);
                 setHasLoadedInitialData(true);
-                hasLoadedInitialDataRef.current = true;
-                setRefreshing(false);
             }
         }
 
         loadBudgets().catch(() => {
             if (!ignore && !controller.signal.aborted) {
                 setError('Budget gagal dimuat.');
-                setRefreshing(false);
                 setHasLoadedInitialData(true);
             }
         });
@@ -195,7 +189,7 @@ export default function BudgetsPage() {
     const dataLoading = staticLoading || !hasLoadedInitialData;
 
     return (
-        <div className={`${refreshing ? 'data-refreshing ' : ''}page-enter relative`} aria-busy={refreshing}>
+        <div className="page-enter relative">
             <MonthToolbar
                 selectedMonth={selectedMonth}
                 onChange={setSelectedMonth}
