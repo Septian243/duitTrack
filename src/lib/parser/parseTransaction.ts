@@ -41,12 +41,27 @@ function detectCategory(
     keywordMap: Record<string, string[]>,
     fallback: string
 ): { categoryName: string; matched: boolean } {
-    const lower = text.toLowerCase();
+    const lower = text.toLocaleLowerCase('id-ID');
+    let bestMatch: { categoryName: string; keywordLength: number } | null = null;
+
     for (const [category, keywords] of Object.entries(keywordMap)) {
-        if (keywords.some((kw) => lower.includes(kw))) {
-            return { categoryName: category, matched: true };
+        for (const keyword of keywords) {
+            const normalizedKeyword = keyword.trim().toLocaleLowerCase('id-ID');
+            if (!normalizedKeyword || /\d/.test(normalizedKeyword) || normalizedKeyword.length < 3) continue;
+
+            const escaped = normalizedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const boundaryPattern = new RegExp(
+                `(?:^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`,
+                'u'
+            );
+
+            if (boundaryPattern.test(lower) && (!bestMatch || normalizedKeyword.length > bestMatch.keywordLength)) {
+                bestMatch = { categoryName: category, keywordLength: normalizedKeyword.length };
+            }
         }
     }
+
+    if (bestMatch) return { categoryName: bestMatch.categoryName, matched: true };
     return { categoryName: fallback, matched: false };
 }
 

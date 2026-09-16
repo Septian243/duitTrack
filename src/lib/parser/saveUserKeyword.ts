@@ -6,13 +6,18 @@ const STOPWORDS = new Set([
     'rb', 'ribu', 'jt', 'juta', 'rp',
 ]);
 
+function isAmountToken(word: string) {
+    return /^\d+(?:[.,]\d+)?(?:rb|ribu|jt|juta)?$/i.test(word);
+}
+
 function extractKeywords(note: string): string[] {
     const words = note
         .toLowerCase()
         .replace(/[.,!?]/g, '')
         .split(/\s+/)
         .filter((w) => w.length >= 3)
-        .filter((w) => !/^\d+$/.test(w))
+        .filter((w) => !isAmountToken(w))
+        .filter((w) => !/\d/.test(w))
         .filter((w) => !STOPWORDS.has(w));
 
     return Array.from(new Set(words)).slice(0, 3);

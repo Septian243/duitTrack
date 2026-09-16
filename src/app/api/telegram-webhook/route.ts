@@ -370,12 +370,17 @@ export async function POST(request: Request) {
 
     let categoryId: string | null = null;
     if (parsed.matched) {
-        const { data: category } = await service
+        const { data: categories } = await service
             .from('categories')
-            .select('id')
+            .select('id, user_id')
             .eq('name', parsed.categoryName)
-            .is('user_id', null)
-            .single();
+            .eq('type', parsed.type)
+            .or(`user_id.is.null,user_id.eq.${profile.id}`);
+
+        // Prefer the user's category when a custom category has the same name
+        // as a system category; otherwise use the shared system category.
+        const category = (categories ?? []).find((item) => item.user_id === profile.id)
+            ?? (categories ?? []).find((item) => item.user_id === null);
         categoryId = category?.id ?? null;
     }
 
