@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import LoadingState from '@/components/LoadingState';
 import MonthToolbar from '@/components/MonthToolbar';
+import AnimatedNumber from '@/components/AnimatedNumber';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
@@ -63,16 +63,20 @@ export default function CashflowPage() {
     const [data, setData] = useState<CashflowData | null>(null);
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         let ignore = false;
+        const controller = new AbortController();
 
         async function load() {
             setLoading(true);
+            setError(null);
             const [cfRes, budRes] = await Promise.all([
-                fetch(`/api/cashflow?month=${selectedMonth}`),
-                fetch(`/api/budgets?month=${selectedMonth}`),
+                fetch(`/api/cashflow?month=${selectedMonth}`, { signal: controller.signal }),
+                fetch(`/api/budgets?month=${selectedMonth}`, { signal: controller.signal }),
             ]);
+            if (!cfRes.ok || !budRes.ok) throw new Error('Gagal memuat cashflow');
             const [cfData, budData] = await Promise.all([cfRes.json(), budRes.json()]);
             if (!ignore) {
                 setData(cfData);
@@ -81,25 +85,39 @@ export default function CashflowPage() {
             }
         }
 
-        load();
+        load().catch(() => {
+            if (!ignore && !controller.signal.aborted) {
+                setError('Cashflow gagal dimuat. Silakan coba lagi.');
+                setLoading(false);
+            }
+        });
 
         return () => {
             ignore = true;
+            controller.abort();
         };
     }, [selectedMonth]);
 
-    if (loading || !data) return <LoadingState variant="cashflow" />;
-
-    const main = data.projections[0] ?? {
+    const viewData: CashflowData = data ?? {
+        month: selectedMonth,
+        isCurrentMonth: selectedMonth === currentMonthStr,
+        dayOfMonth: 0,
+        totalDaysInMonth: 0,
+        daysRemaining: 0,
+        projections: [],
+        dailySeries: [],
+        categoryBreakdown: [],
+    };
+    const main = viewData.projections[0] ?? {
         currency: 'IDR',
         totalSoFar: 0,
         avgPerDay: 0,
-        daysRemaining: data.daysRemaining,
+        daysRemaining: viewData.daysRemaining,
         projectedAdditional: 0,
         projectedTotal: 0,
     };
 
-    const dayProgressPct = data.totalDaysInMonth > 0 ? (data.dayOfMonth / data.totalDaysInMonth) * 100 : 0;
+    const dayProgressPct = viewData.totalDaysInMonth > 0 ? (viewData.dayOfMonth / viewData.totalDaysInMonth) * 100 : 0;
 
     const overallBudget = budgets.find((b) => b.category_id === null) ?? null;
     const overallBudgetPct = overallBudget ? (main.projectedTotal / overallBudget.amount) * 100 : null;
@@ -109,18 +127,19 @@ export default function CashflowPage() {
         budgets.filter((b) => b.category_id !== null).map((b) => [b.category_id as string, b])
     );
 
-    const hasData = data.dailySeries.some((d) => d.actual !== null && d.actual > 0) || main.totalSoFar > 0;
+    const hasData = viewData.dailySeries.some((d) => d.actual !== null && d.actual > 0) || main.totalSoFar > 0;
 
     return (
-        <div>
+        <div className="page-enter">
             <MonthToolbar
                 selectedMonth={selectedMonth}
                 onChange={setSelectedMonth}
                 currentMonthStr={currentMonthStr}
                 subtitle="Berdasarkan pola pengeluaran harianmu"
             />
+            {error && <div className="mb-6 rounded-2xl border border-[#E07A5F]/30 bg-[#FCEAE5] px-4 py-3 text-sm text-[#A84D3A]" role="alert">{error}</div>}
 
-            {!hasData ? (
+            {!loading && !hasData ? (
                 <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
                     <Activity size={28} className="text-gray-300 mx-auto mb-3" />
                     <p className="text-sm text-gray-400">Belum ada data pengeluaran di bulan ini.</p>
@@ -139,7 +158,7 @@ export default function CashflowPage() {
                                     Pengeluaran Sejauh Ini
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(main.totalSoFar, main.currency)}
+                                    {loading ? <span className="inline-block h-6 w-36 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={main.totalSoFar} formatter={(value) => formatMoney(value, main.currency)} />}
                                 </p>
                             </div>
                         </div>
@@ -154,7 +173,7 @@ export default function CashflowPage() {
                                     Rata-rata / Hari
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(main.avgPerDay, main.currency)}
+                                    {loading ? <span className="inline-block h-6 w-36 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={main.avgPerDay} formatter={(value) => formatMoney(value, main.currency)} />}
                                 </p>
                             </div>
                         </div>
@@ -169,7 +188,7 @@ export default function CashflowPage() {
                                     Sisa Hari
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {data.daysRemaining} hari
+                                    {loading ? <span className="inline-block h-6 w-20 rounded bg-gray-200 skeleton-pulse" /> : `${viewData.daysRemaining} hari`}
                                 </p>
                             </div>
                         </div>
@@ -181,10 +200,10 @@ export default function CashflowPage() {
                                     <Compass size={20} className="text-[#9B5DE5]" />
                                 </div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
-                                    {data.isCurrentMonth ? 'Proyeksi Total Pengeluaran' : 'Total Akhir Bulan'}
+                                    {viewData.isCurrentMonth ? 'Proyeksi Total Pengeluaran' : 'Total Akhir Bulan'}
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    {formatMoney(main.projectedTotal, main.currency)}
+                                    {loading ? <span className="inline-block h-6 w-36 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={main.projectedTotal} formatter={(value) => formatMoney(value, main.currency)} />}
                                 </p>
                             </div>
                         </div>
@@ -197,7 +216,7 @@ export default function CashflowPage() {
                                 Posisi Hari Ini
                             </h3>
                             <span className="text-sm text-gray-500">
-                                Hari ke-{data.dayOfMonth} dari {data.totalDaysInMonth} hari
+                                Hari ke-{viewData.dayOfMonth} dari {viewData.totalDaysInMonth} hari
                             </span>
                         </div>
                         <div className="bg-gray-100 h-3 rounded-full overflow-hidden">
@@ -217,7 +236,7 @@ export default function CashflowPage() {
                             Pengeluaran Kumulatif: Aktual vs Proyeksi
                         </h3>
                         <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={data.dailySeries}>
+                            {loading ? <div className="h-[300px] rounded-xl bg-gray-100 skeleton-pulse" /> : <LineChart data={viewData.dailySeries}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 <XAxis dataKey="day" tick={{ fontSize: 12 }} label={{ value: 'Hari', position: 'insideBottom', offset: -5, fontSize: 12 }} />
                                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
@@ -253,7 +272,7 @@ export default function CashflowPage() {
                                     connectNulls
                                     name="Proyeksi"
                                 />
-                            </LineChart>
+                            </LineChart>}
                         </ResponsiveContainer>
                     </div>
 
@@ -300,11 +319,13 @@ export default function CashflowPage() {
                                 Proyeksi per Kategori
                             </h3>
                         </div>
-                        {data.categoryBreakdown.length === 0 ? (
+                        {loading ? (
+                            <div className="h-40 rounded-xl bg-gray-100 skeleton-pulse" />
+                        ) : viewData.categoryBreakdown.length === 0 ? (
                             <p className="text-sm text-gray-400">Belum ada pengeluaran per kategori bulan ini.</p>
                         ) : (
                             <div className="space-y-4">
-                                {data.categoryBreakdown.map((c) => {
+                                {viewData.categoryBreakdown.map((c) => {
                                     const catBudget = c.category_id ? categoryBudgetMap.get(c.category_id) : undefined;
                                     const pct = catBudget ? (c.projectedTotal / catBudget.amount) * 100 : null;
                                     const willOverBudget = pct !== null && pct >= 100;

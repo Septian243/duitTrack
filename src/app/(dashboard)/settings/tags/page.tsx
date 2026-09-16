@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import LoadingState from '@/components/LoadingState';
 import TagModal from '@/components/TagModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { Plus, X } from 'lucide-react';
@@ -17,12 +16,14 @@ type Tag = {
 export default function TagsPage() {
     const [tags, setTags] = useState<Tag[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
     const { showToast } = useToast();
 
     async function loadTags() {
         const res = await fetch('/api/tags');
+        if (!res.ok) throw new Error('Gagal memuat tag');
         const data = await res.json();
         setTags(data);
     }
@@ -33,7 +34,10 @@ export default function TagsPage() {
             await loadTags();
             setLoading(false);
         }
-        init();
+        init().catch(() => {
+            setError('Tag gagal dimuat. Silakan coba lagi.');
+            setLoading(false);
+        });
     }, []);
 
     async function handleSaved(savedName: string) {
@@ -56,10 +60,9 @@ export default function TagsPage() {
         showToast({ type: 'success', title: 'Berhasil Dihapus', description: `Tag "${tag.name}" berhasil dihapus.` });
     }
 
-    if (loading) return <LoadingState variant="tags" />;
-
     return (
-        <div>
+        <div className="page-enter">
+            {error && <div className="mb-6 rounded-2xl border border-[#E07A5F]/30 bg-[#FCEAE5] px-4 py-3 text-sm text-[#A84D3A]" role="alert">{error}</div>}
             <div className="flex items-center justify-between mb-6">
                 <button
                     type="button"
@@ -72,7 +75,9 @@ export default function TagsPage() {
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm p-6">
-                {tags.length === 0 ? (
+                {loading ? (
+                    <div className="skeleton-pulse h-32 rounded-xl bg-gray-100" role="status" aria-label="Memuat tag" />
+                ) : tags.length === 0 ? (
                     <p className="text-sm text-gray-400">Belum ada tag. Tambah tag pertamamu.</p>
                 ) : (
                     <div className="flex flex-wrap gap-2">

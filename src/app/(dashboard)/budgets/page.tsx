@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import LoadingState from '@/components/LoadingState';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import MonthToolbar from '@/components/MonthToolbar';
 import BudgetModal from '@/components/BudgetModal';
@@ -39,6 +38,7 @@ export default function BudgetsPage() {
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [staticLoading, setStaticLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const hasLoadedInitialDataRef = useRef(false);
@@ -49,21 +49,32 @@ export default function BudgetsPage() {
     const { showToast } = useToast();
 
     useEffect(() => {
+        const controller = new AbortController();
+
         async function loadStatic() {
-            const res = await fetch('/api/categories');
+            const res = await fetch('/api/categories', { signal: controller.signal });
+            if (!res.ok) throw new Error('Gagal memuat kategori');
             const data = await res.json();
             setCategories(data.filter((c: Category) => c.type === 'expense'));
             setStaticLoading(false);
         }
-        loadStatic();
+        loadStatic().catch(() => {
+            if (!controller.signal.aborted) {
+                setError('Kategori gagal dimuat.');
+                setStaticLoading(false);
+            }
+        });
+        return () => controller.abort();
     }, []);
 
     useEffect(() => {
         let ignore = false;
+        const controller = new AbortController();
 
         async function loadBudgets() {
             if (hasLoadedInitialDataRef.current) setRefreshing(true);
-            const res = await fetch(`/api/budgets?month=${selectedMonth}`);
+            const res = await fetch(`/api/budgets?month=${selectedMonth}`, { signal: controller.signal });
+            if (!res.ok) throw new Error('Gagal memuat budget');
             const data = await res.json();
             if (!ignore) {
                 setBudgets(data);
@@ -73,10 +84,17 @@ export default function BudgetsPage() {
             }
         }
 
-        loadBudgets();
+        loadBudgets().catch(() => {
+            if (!ignore && !controller.signal.aborted) {
+                setError('Budget gagal dimuat.');
+                setRefreshing(false);
+                setHasLoadedInitialData(true);
+            }
+        });
 
         return () => {
             ignore = true;
+            controller.abort();
         };
     }, [selectedMonth]);
 
@@ -174,21 +192,18 @@ export default function BudgetsPage() {
         );
     }
 
-    if (staticLoading || !hasLoadedInitialData) return <LoadingState variant="budgets" />;
+    const dataLoading = staticLoading || !hasLoadedInitialData;
 
     return (
-        <div className={refreshing ? 'data-refreshing relative' : 'relative'} aria-busy={refreshing}>
-            {refreshing && (
-                <div className="refresh-overlay absolute inset-0 z-20 min-h-full bg-[#F5FAF3] px-0" aria-live="polite">
-                    <LoadingState variant="budgets" />
-                </div>
-            )}
+        <div className={`${refreshing ? 'data-refreshing ' : ''}page-enter relative`} aria-busy={refreshing}>
             <MonthToolbar
                 selectedMonth={selectedMonth}
                 onChange={setSelectedMonth}
                 currentMonthStr={currentMonthStr}
                 subtitle="Ringkasan budget bulan ini"
             />
+
+            {error && <div className="mb-6 rounded-2xl border border-[#E07A5F]/30 bg-[#FCEAE5] px-4 py-3 text-sm text-[#A84D3A]" role="alert">{error}</div>}
 
             <>
                 {/* Stat cards */}
@@ -204,7 +219,7 @@ export default function BudgetsPage() {
                                     Total Budget
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                            <AnimatedNumber value={totalBudget} formatter={formatMoney} />
+                            {dataLoading ? <span className="inline-block h-7 w-36 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={totalBudget} formatter={formatMoney} />}
                                 </p>
                             </div>
                         </div>
@@ -221,7 +236,7 @@ export default function BudgetsPage() {
                                     Total Terpakai
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                            <AnimatedNumber value={totalSpent} formatter={formatMoney} />
+                            {dataLoading ? <span className="inline-block h-7 w-36 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={totalSpent} formatter={formatMoney} />}
                                 </p>
                             </div>
                         </div>
@@ -241,7 +256,7 @@ export default function BudgetsPage() {
                                     className={`text-xl font-bold font-[family-name:var(--font-sora)] ${totalRemaining < 0 ? 'text-[#E07A5F]' : 'text-[#1B2A22]'
                                         }`}
                                 >
-                                    <AnimatedNumber value={totalRemaining} formatter={formatMoney} />
+                                    {dataLoading ? <span className="inline-block h-7 w-36 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={totalRemaining} formatter={formatMoney} />}
                                 </p>
                             </div>
                         </div>
@@ -269,7 +284,9 @@ export default function BudgetsPage() {
                             Budget Keseluruhan
                         </h3>
                     </div>
-                    {overallBudget ? (
+                    {dataLoading ? (
+                        <div className="skeleton-pulse mt-4 h-20 rounded-xl bg-gray-100" role="status" aria-label="Memuat budget keseluruhan" />
+                    ) : overallBudget ? (
                         renderBudgetRow(overallBudget)
                     ) : (
                         <p className="text-sm text-gray-400 py-2">
@@ -295,7 +312,9 @@ export default function BudgetsPage() {
                             Budget per Kategori
                         </h3>
                     </div>
-                    {categoryBudgets.length === 0 ? (
+                    {dataLoading ? (
+                        <div className="skeleton-pulse mt-4 h-32 rounded-xl bg-gray-100" role="status" aria-label="Memuat budget kategori" />
+                    ) : categoryBudgets.length === 0 ? (
                         <p className="text-sm text-gray-400 py-2">
                             Belum ada budget per kategori.{' '}
                             <button

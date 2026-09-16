@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FolderPlus, Pencil } from 'lucide-react';
 
 type Category = {
@@ -61,8 +62,8 @@ export default function CategoryModal({
     const inputClass =
         'w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#76C457] transition-colors';
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    return typeof document === 'undefined' ? null : createPortal((
+        <div className="modal-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
                 className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
@@ -176,5 +177,5 @@ export default function CategoryModal({
                 </div>
             </div>
         </div>
-    );
+    ), document.body);
 }

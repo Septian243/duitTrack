@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Target, Pencil, ChevronDown, Search } from 'lucide-react';
 
 type Category = { id: string; name: string; type: 'income' | 'expense' };
@@ -152,11 +153,11 @@ export default function BudgetModal({
         ? availableCategories.find((category) => category.id === categoryId)?.name ?? 'Pilih kategori'
         : 'Budget Keseluruhan';
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    return typeof document === 'undefined' ? null : createPortal((
+        <div className="modal-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="modal-enter flex max-h-[96vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                            className="modal-fade-in flex max-h-[96vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100 shrink-0">
@@ -304,5 +305,5 @@ export default function BudgetModal({
                 </div>
             </div>
         </div>
-    );
+    ), document.body);
 }

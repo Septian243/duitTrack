@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import LoadingState from '@/components/LoadingState';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { Send, Bell, Target, CalendarDays, Unlink, Copy, Check, ExternalLink, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
@@ -207,16 +206,21 @@ export default function SettingsPage() {
         showToast({ type: 'success', title: 'Berhasil Disimpan', description: 'Pengaturan notifikasi berhasil diperbarui.' });
     }
 
-    if (profileLoading || !profile) return <LoadingState variant="settings" />;
-
-    const isConnected = !!profile.telegram_chat_id;
+    const displayProfile = profile ?? {
+        daily_reminder_enabled: false,
+        budget_alert_enabled: true,
+        monthly_summary_enabled: true,
+        telegram_chat_id: null,
+        telegram_username: null,
+    };
+    const isConnected = !!displayProfile.telegram_chat_id;
     const deepLinkUrl = botUsername && code ? `https://t.me/${botUsername}?start=${code}` : null;
     const qrCodeUrl = deepLinkUrl
         ? `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(deepLinkUrl)}`
         : null;
 
     return (
-        <div>
+        <div className="page-enter">
             {/* Card: Hubungkan Telegram */}
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -237,19 +241,19 @@ export default function SettingsPage() {
                     <span
                         className={'w-2 h-2 rounded-full ' + (isConnected ? 'bg-[#76C457]' : 'bg-[#E07A5F]')}
                     />
-                    {isConnected
-                        ? 'Terhubung' + (profile.telegram_username ? ' sebagai @' + profile.telegram_username : '')
+                    {profileLoading ? <span className="inline-block h-4 w-28 rounded bg-white/70 skeleton-pulse" /> : isConnected
+                        ? 'Terhubung' + (displayProfile.telegram_username ? ' sebagai @' + displayProfile.telegram_username : '')
                         : 'Belum Terhubung'}
                 </div>
 
-                {!isConnected && (
+                {!profileLoading && !isConnected && (
                     <p className="text-sm text-gray-500 mb-4">
                         Hubungkan Telegram buat catat transaksi lewat chat, dapat reminder harian, dan
                         notifikasi budget langsung ke HP kamu.
                     </p>
                 )}
 
-            {isConnected && (
+                {!profileLoading && isConnected && (
                     <button
                         type="button"
                         onClick={() => setDisconnectDialogOpen(true)}
@@ -411,7 +415,7 @@ export default function SettingsPage() {
                 open={disconnectDialogOpen}
                 title="Putuskan Koneksi"
                 itemType="koneksi Telegram"
-                itemName={profile.telegram_username ? `@${profile.telegram_username}` : 'Telegram'}
+                itemName={displayProfile.telegram_username ? `@${displayProfile.telegram_username}` : 'Telegram'}
                 consequence="Reminder harian, peringatan budget, dan ringkasan bulanan tidak akan terkirim sampai kamu menghubungkan Telegram lagi."
                 confirmLabel="Ya, Putuskan"
                 confirmClassName="bg-[#F0444D] hover:bg-[#DB3740] shadow-[0_8px_18px_rgba(240,68,77,0.22)]"

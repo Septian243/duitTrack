@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 export default function AnimatedNumber({
     value,
     formatter,
-    duration = 650,
+    duration = 1100,
 }: {
     value: number;
     formatter: (value: number) => string;

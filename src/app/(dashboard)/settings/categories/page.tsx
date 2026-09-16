@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import LoadingState from '@/components/LoadingState';
 import CategoryModal from '@/components/CategoryModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { Plus, Search, Pencil, Trash2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
@@ -18,6 +17,7 @@ type Category = {
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -27,6 +27,7 @@ export default function CategoriesPage() {
 
     async function loadCategories() {
         const res = await fetch('/api/categories');
+        if (!res.ok) throw new Error('Gagal memuat kategori');
         const data = await res.json();
         setCategories(data);
     }
@@ -37,7 +38,10 @@ export default function CategoriesPage() {
             await loadCategories();
             setLoading(false);
         }
-        init();
+        init().catch(() => {
+            setError('Kategori gagal dimuat. Silakan coba lagi.');
+            setLoading(false);
+        });
     }, []);
 
     function handleAddClick() {
@@ -136,10 +140,9 @@ export default function CategoriesPage() {
         );
     }
 
-    if (loading) return <LoadingState variant="categories" />;
-
     return (
-        <div>
+        <div className="page-enter">
+            {error && <div className="mb-6 rounded-2xl border border-[#E07A5F]/30 bg-[#FCEAE5] px-4 py-3 text-sm text-[#A84D3A]" role="alert">{error}</div>}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                 <div className="relative w-full sm:w-72">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -173,7 +176,9 @@ export default function CategoriesPage() {
                             Pengeluaran
                         </h3>
                     </div>
-                    {expenseCategories.length === 0 ? (
+                    {loading ? (
+                        <div className="skeleton-pulse mt-4 h-40 rounded-xl bg-gray-100" role="status" aria-label="Memuat kategori pengeluaran" />
+                    ) : expenseCategories.length === 0 ? (
                         <p className="text-sm text-gray-400 py-2">Tidak ada kategori ditemukan.</p>
                     ) : (
                         <div>{expenseCategories.map(renderRow)}</div>
@@ -190,7 +195,9 @@ export default function CategoriesPage() {
                             Pemasukan
                         </h3>
                     </div>
-                    {incomeCategories.length === 0 ? (
+                    {loading ? (
+                        <div className="skeleton-pulse mt-4 h-40 rounded-xl bg-gray-100" role="status" aria-label="Memuat kategori pemasukan" />
+                    ) : incomeCategories.length === 0 ? (
                         <p className="text-sm text-gray-400 py-2">Tidak ada kategori ditemukan.</p>
                     ) : (
                         <div>{incomeCategories.map(renderRow)}</div>

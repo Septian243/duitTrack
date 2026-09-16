@@ -19,11 +19,13 @@ export default async function ProfilePage() {
         .single();
 
     return (
-        <ProfileTabs
-            userId={user.id}
-            userEmail={user.email ?? ''}
-            initialUsername={profile?.username ?? ''}
-            initialAvatarUrl={profile?.avatar_url ?? null}
-        />
+        <div className="page-enter">
+            <ProfileTabs
+                userId={user.id}
+                userEmail={user.email ?? ''}
+                initialUsername={profile?.username ?? ''}
+                initialAvatarUrl={profile?.avatar_url ?? null}
+            />
+        </div>
     );
 }

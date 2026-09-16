@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronDown, Search, Plus, Receipt, Pencil } from 'lucide-react';
 
 type Category = { id: string; name: string; type: 'income' | 'expense' };
@@ -242,11 +243,11 @@ export default function TransactionModal({
     const inputClass =
         'w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#76C457] transition-colors';
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    return typeof document === 'undefined' ? null : createPortal((
+        <div className="modal-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="modal-enter flex max-h-[96vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                            className="modal-fade-in flex max-h-[96vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -551,5 +552,5 @@ export default function TransactionModal({
                 </div>
             </div>
         </div>
-    );
+    ), document.body);
 }

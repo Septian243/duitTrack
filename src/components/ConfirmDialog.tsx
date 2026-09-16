@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
 
 type ConfirmDialogProps = {
@@ -53,9 +54,9 @@ export default function ConfirmDialog({
         }
     }
 
-    return (
+    return typeof document === 'undefined' ? null : createPortal((
         <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#17221d]/55 px-4 py-6 backdrop-blur-[2px]"
+            className="modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-[#17221d]/55 px-4 py-6 backdrop-blur-[2px]"
             role="presentation"
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget && !submitting) onCancel();
@@ -124,5 +125,5 @@ export default function ConfirmDialog({
                 </footer>
             </section>
         </div>
-    );
+    ), document.body);
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import LoadingState from '@/components/LoadingState';
+import AnimatedNumber from '@/components/AnimatedNumber';
 import TransactionModal from '@/components/TransactionModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import {
@@ -82,8 +83,7 @@ export default function TransactionsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
     const { showToast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [staticLoading, setStaticLoading] = useState(true);
-    const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -139,25 +139,34 @@ export default function TransactionsPage() {
     }, []);
 
     useEffect(() => {
+        const controller = new AbortController();
+
         async function loadStatic() {
             const [catRes, statsRes, tagRes] = await Promise.all([
-                fetch('/api/categories'),
-                fetch('/api/transactions/stats'),
-                fetch('/api/tags'),
+                fetch('/api/categories', { signal: controller.signal }),
+                fetch('/api/transactions/stats', { signal: controller.signal }),
+                fetch('/api/tags', { signal: controller.signal }),
             ]);
+            if (!catRes.ok || !statsRes.ok || !tagRes.ok) throw new Error('Gagal memuat filter');
             setCategories(await catRes.json());
             setStats(await statsRes.json());
             setTags(await tagRes.json());
-            setStaticLoading(false);
         }
-        loadStatic();
+        loadStatic().catch(() => {
+            if (!controller.signal.aborted) {
+                setError('Filter transaksi gagal dimuat.');
+            }
+        });
+        return () => controller.abort();
     }, []);
 
     useEffect(() => {
         let ignore = false;
+        const controller = new AbortController();
 
         async function loadTransactions() {
             setLoading(true);
+            setError(null);
             const params = new URLSearchParams();
             if (debouncedSearch) params.set('search', debouncedSearch);
             if (categoryId) params.set('category_id', categoryId);
@@ -168,20 +177,26 @@ export default function TransactionsPage() {
             params.set('page', String(page));
             params.set('page_size', String(pageSize));
 
-            const res = await fetch(`/api/transactions?${params.toString()}`);
+            const res = await fetch(`/api/transactions?${params.toString()}`, { signal: controller.signal });
+            if (!res.ok) throw new Error('Gagal memuat transaksi');
             const data = await res.json();
             if (!ignore) {
                 setTransactions(data.data);
                 setTotal(data.total);
                 setLoading(false);
-                setHasLoadedInitialData(true);
             }
         }
 
-        loadTransactions();
+        loadTransactions().catch(() => {
+            if (!ignore && !controller.signal.aborted) {
+                setError('Transaksi gagal dimuat. Silakan coba lagi.');
+                setLoading(false);
+            }
+        });
 
         return () => {
             ignore = true;
+            controller.abort();
         };
     }, [debouncedSearch, categoryId, type, appliedRange, sort, page, pageSize]);
 
@@ -324,10 +339,9 @@ export default function TransactionsPage() {
         );
     }
 
-    if (!hasLoadedInitialData || staticLoading) return <LoadingState variant="transactions" />;
-
     return (
-        <div>
+        <div className="page-enter">
+            {error && <div className="mb-6 rounded-2xl border border-[#E07A5F]/30 bg-[#FCEAE5] px-4 py-3 text-sm text-[#A84D3A]" role="alert">{error}</div>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white rounded-2xl shadow-sm p-5 relative overflow-hidden">
                     <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#3D84A8]/10 rounded-full blur-xl" />
@@ -340,7 +354,7 @@ export default function TransactionsPage() {
                                 Total Transaksi Bulan Ini
                             </p>
                             <p className="text-2xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                {stats?.totalCount ?? '-'}
+                                <AnimatedNumber value={stats?.totalCount ?? 0} formatter={(value) => Math.round(value).toLocaleString('id-ID')} />
                             </p>
                         </div>
                     </div>
@@ -357,7 +371,7 @@ export default function TransactionsPage() {
                                 Transaksi Masuk
                             </p>
                             <p className="text-2xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                {stats?.incomeCount ?? '-'}
+                                <AnimatedNumber value={stats?.incomeCount ?? 0} formatter={(value) => Math.round(value).toLocaleString('id-ID')} />
                             </p>
                         </div>
                     </div>
@@ -374,7 +388,7 @@ export default function TransactionsPage() {
                                 Transaksi Keluar
                             </p>
                             <p className="text-2xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                {stats?.expenseCount ?? '-'}
+                                <AnimatedNumber value={stats?.expenseCount ?? 0} formatter={(value) => Math.round(value).toLocaleString('id-ID')} />
                             </p>
                         </div>
                     </div>
@@ -900,7 +914,7 @@ export default function TransactionsPage() {
 
             <ConfirmDialog
                 open={Boolean(deleteTarget)}
-                title="🗑️ Hapus Transaksi"
+                title="Hapus Transaksi"
                 itemType="transaksi"
                 itemName={deleteTarget
                     ? `"${deleteTarget.note || deleteTarget.categories?.name || 'Tanpa catatan'}" — ${formatRupiah(deleteTarget.amount)}`

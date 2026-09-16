@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import LoadingState from '@/components/LoadingState';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import MonthToolbar, { shiftMonth } from '@/components/MonthToolbar';
+import { useProfile } from '@/context/ProfileContext';
 import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
     LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
@@ -81,6 +81,10 @@ function calcTrend(current: number, previous: number | undefined) {
     return { label: `${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% dari bulan lalu`, isUp: diff > 0 };
 }
 
+function WidgetSkeleton({ className = 'h-32' }: { className?: string }) {
+    return <div className={`skeleton-pulse rounded-2xl bg-gray-200 ${className}`} role="status" aria-label="Memuat bagian dashboard" />;
+}
+
 export default function DashboardPage() {
     const currentMonthStr = getCurrentMonthStr();
     const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
@@ -92,83 +96,116 @@ export default function DashboardPage() {
     const [categoryData, setCategoryData] = useState<CategoryItem[]>([]);
     const [trendData, setTrendData] = useState<TrendItem[]>([]);
     const [trendMonths, setTrendMonths] = useState(6);
-    const [username, setUsername] = useState<string | null>(null);
     const [budgets, setBudgets] = useState<BudgetItem[]>([]);
     const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
     const [cashflow, setCashflow] = useState<CashflowProjection | null>(null);
     const [streak, setStreak] = useState<{ hasTransactionToday: boolean; streakDays: number } | null>(
         null
     );
-    const [loading, setLoading] = useState(true);
-    const [hasLoaded, setHasLoaded] = useState(false);
+    const [summaryLoading, setSummaryLoading] = useState(true);
+    const [categoryLoading, setCategoryLoading] = useState(true);
+    const [budgetLoading, setBudgetLoading] = useState(true);
+    const [transactionsLoading, setTransactionsLoading] = useState(true);
+    const [cashflowLoading, setCashflowLoading] = useState(true);
+    const [streakLoading, setStreakLoading] = useState(true);
+    const [trendLoading, setTrendLoading] = useState(true);
+    const [dashboardError, setDashboardError] = useState<string | null>(null);
+    const [trendError, setTrendError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const hasLoadedRef = useRef(false);
+    const { username } = useProfile();
 
-    // Fetch data yang tergantung bulan terpilih di toolbar
+    function changeTrendMonths(months: number) {
+        setTrendLoading(true);
+        setTrendMonths(months);
+    }
+
+    // Data dashboard utama dimuat dari satu endpoint agregasi.
     useEffect(() => {
         let ignore = false;
+        const controller = new AbortController();
+        const isInitialLoad = !hasLoadedRef.current;
+        setRefreshing(!isInitialLoad);
+        setSummaryLoading(true);
+        setCategoryLoading(true);
+        setBudgetLoading(true);
+        setTransactionsLoading(true);
+        setCashflowLoading(true);
+        setStreakLoading(true);
 
-        async function load() {
-            const isInitialLoad = !hasLoadedRef.current;
-            setLoading(isInitialLoad);
-            setRefreshing(!isInitialLoad);
-            const [sumRes, prevSumRes, catRes, profileRes, budgetsRes, transactionsRes, cashflowRes, streakRes] =
-                await Promise.all([
-                    fetch(`/api/summary?month=${selectedMonth}`),
-                    fetch(`/api/summary?month=${prevMonthStr}`),
-                    fetch(`/api/summary/by-category?type=expense&month=${selectedMonth}`),
-                    fetch('/api/profile'),
-                    fetch(`/api/budgets?month=${selectedMonth}`),
-                    fetch(`/api/transactions?month=${selectedMonth}&limit=10`),
-                    fetch('/api/cashflow'),
-                    fetch('/api/streak'),
-                ]);
-            const [sumData, prevSumData, catData, profileData, budgetsData, transactionsData, cashflowData, streakData] =
-                await Promise.all([
-                    sumRes.json(), prevSumRes.json(), catRes.json(), profileRes.json(),
-                    budgetsRes.json(), transactionsRes.json(), cashflowRes.json(), streakRes.json(),
-                ]);
-            if (!ignore) {
-                setSummary(sumData.summary);
-                setPrevSummary(prevSumData.summary);
-                setCategoryData(catData);
-                setUsername(profileData.username ?? null);
-                setBudgets(budgetsData);
-                setRecentTransactions(transactionsData.data);
-                setCashflow(cashflowData.projections?.[0] ?? null);
-                setStreak(streakData);
-                setLoading(false);
-                setRefreshing(false);
-                setHasLoaded(true);
-                hasLoadedRef.current = true;
+        async function loadDashboard() {
+            try {
+                setDashboardError(null);
+                const response = await fetch(`/api/dashboard?month=${selectedMonth}`, { signal: controller.signal });
+                if (!response.ok) throw new Error('Gagal memuat dashboard');
+                const data = await response.json();
+                if (!ignore) {
+                    setSummary(data.summary ?? []);
+                    setPrevSummary(data.previousSummary ?? []);
+                    setCategoryData(data.categoryData ?? []);
+                    setBudgets(data.budgets ?? []);
+                    setRecentTransactions(data.recentTransactions ?? []);
+                    setCashflow(data.cashflow?.projections?.[0] ?? null);
+                    setStreak(data.streak ?? null);
+                    setSummaryLoading(false);
+                    setCategoryLoading(false);
+                    setBudgetLoading(false);
+                    setTransactionsLoading(false);
+                    setCashflowLoading(false);
+                    setStreakLoading(false);
+                    setRefreshing(false);
+                    hasLoadedRef.current = true;
+                }
+            } catch {
+                if (!ignore && !controller.signal.aborted) {
+                    setDashboardError('Data dashboard gagal dimuat. Silakan coba lagi.');
+                    setSummaryLoading(false);
+                    setCategoryLoading(false);
+                    setBudgetLoading(false);
+                    setTransactionsLoading(false);
+                    setCashflowLoading(false);
+                    setStreakLoading(false);
+                    setRefreshing(false);
+                }
             }
         }
 
-        load();
+        loadDashboard();
 
         return () => {
             ignore = true;
+            controller.abort();
         };
     }, [selectedMonth, prevMonthStr]);
 
     // Fetch tren - independen dari toolbar bulan, selalu anchor ke bulan berjalan asli
     useEffect(() => {
         let ignore = false;
+        const controller = new AbortController();
 
         async function loadTrend() {
-            const res = await fetch(`/api/summary/trend?months=${trendMonths}`);
+            setTrendError(null);
+            const res = await fetch(`/api/summary/trend?months=${trendMonths}`, { signal: controller.signal });
+            if (!res.ok) throw new Error('Gagal memuat tren');
             const data = await res.json();
-            if (!ignore) setTrendData(data);
+            if (!ignore) {
+                setTrendData(data);
+                setTrendLoading(false);
+            }
         }
 
-        loadTrend();
+        loadTrend().catch(() => {
+            if (!ignore && !controller.signal.aborted) {
+                setTrendLoading(false);
+                setTrendError('Tren belum dapat dimuat.');
+            }
+        });
 
         return () => {
             ignore = true;
+            controller.abort();
         };
     }, [trendMonths]);
-
-    if (loading && !hasLoaded) return <LoadingState variant="dashboard" />;
 
     const mainSummary = summary[0] ?? { currency: 'IDR', income: 0, expense: 0, balance: 0 };
     const prevMainSummary = prevSummary.find((s) => s.currency === mainSummary.currency);
@@ -178,7 +215,7 @@ export default function DashboardPage() {
     const expenseTrend = calcTrend(mainSummary.expense, prevMainSummary?.expense);
 
     const avgPerDay = isCurrentMonth
-        ? cashflow?.avgPerDay ?? 0
+        ? cashflowLoading ? 0 : cashflow?.avgPerDay ?? 0
         : mainSummary.expense / daysInMonth(selectedMonth);
     const avgPerDayPrev = prevMainSummary
         ? prevMainSummary.expense / daysInMonth(prevMonthStr)
@@ -187,7 +224,7 @@ export default function DashboardPage() {
 
     // Proyeksi (bulan berjalan) vs Saldo Akhir aktual (bulan yang sudah lewat)
     const projectedBalance =
-        isCurrentMonth && cashflow ? mainSummary.income - cashflow.projectedTotal : mainSummary.balance;
+        isCurrentMonth && !cashflowLoading && cashflow ? mainSummary.income - cashflow.projectedTotal : mainSummary.balance;
 
     const totalExpenseForPct = categoryData.reduce((sum, c) => sum + c.value, 0);
 
@@ -202,15 +239,10 @@ export default function DashboardPage() {
     const cappedBudgets = combinedBudgets.slice(0, 5);
     const hasMoreBudgets = combinedBudgets.length > 5;
 
-    const showReminder = streak && (!streak.hasTransactionToday || streak.streakDays >= 2);
+    const showReminder = !streakLoading && streak && (!streak.hasTransactionToday || streak.streakDays >= 2);
 
     return (
-        <div className={refreshing ? 'data-refreshing relative' : 'relative'} aria-busy={refreshing}>
-            {refreshing && (
-                <div className="refresh-overlay absolute inset-0 z-20 min-h-full bg-[#F5FAF3] px-0" aria-live="polite">
-                    <LoadingState variant="dashboard" />
-                </div>
-            )}
+        <div className={`${refreshing ? 'data-refreshing ' : ''}page-enter relative`} aria-busy={refreshing}>
             {/* Hero banner */}
             <div className="bg-gradient-to-br from-[#0F3D2E] via-[#1B4D3A] to-[#3A7A5C] rounded-3xl mb-8 relative overflow-hidden">
                 <div
@@ -238,7 +270,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Reminder/Nudge - kondisional, di luar urutan tetap */}
-            {showReminder && (
+            {streakLoading ? (
+                <div className="mb-6 h-[58px] rounded-2xl" aria-hidden="true" />
+            ) : showReminder && (
                 <div
                     className={`rounded-2xl p-4 mb-6 flex items-center gap-3 ${!streak!.hasTransactionToday ? 'bg-[#FCF1DE]' : 'bg-[#E8F5E0]'
                         }`}
@@ -268,7 +302,13 @@ export default function DashboardPage() {
                 currentMonthStr={currentMonthStr}
             />
 
-            {!monthHasTransactions ? (
+            {dashboardError && (
+                <div className="mb-6 rounded-2xl border border-[#E07A5F]/30 bg-[#FCEAE5] px-4 py-3 text-sm text-[#A84D3A]" role="alert">
+                    {dashboardError}
+                </div>
+            )}
+
+            {!summaryLoading && !monthHasTransactions ? (
                 <div className="bg-white rounded-2xl shadow-sm p-10 mb-8 text-center">
                     <CalendarDays size={28} className="text-gray-300 mx-auto mb-3" />
                     <p className="text-sm text-gray-400">
@@ -290,7 +330,7 @@ export default function DashboardPage() {
                                     Saldo Bulan Ini
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    <AnimatedNumber value={mainSummary.balance} formatter={(value) => formatMoney(value, mainSummary.currency)} />
+                            {summaryLoading ? <span className="inline-block h-6 w-32 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={mainSummary.balance} formatter={(value) => formatMoney(value, mainSummary.currency)} />}
                                 </p>
                                 {balanceTrend.isUp !== null ? (
                                     <p
@@ -317,7 +357,7 @@ export default function DashboardPage() {
                                     Total Pengeluaran
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    <AnimatedNumber value={mainSummary.expense} formatter={(value) => formatMoney(value, mainSummary.currency)} />
+                                    {summaryLoading ? <span className="inline-block h-6 w-32 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={mainSummary.expense} formatter={(value) => formatMoney(value, mainSummary.currency)} />}
                                 </p>
                                 {expenseTrend.isUp !== null ? (
                                     <p
@@ -344,7 +384,7 @@ export default function DashboardPage() {
                                     Rata-rata Pengeluaran/Hari
                                 </p>
                                 <p className="text-xl font-bold font-[family-name:var(--font-sora)] text-[#1B2A22]">
-                                    <AnimatedNumber value={avgPerDay} formatter={(value) => formatMoney(value, mainSummary.currency)} />
+                                    {summaryLoading ? <span className="inline-block h-6 w-32 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={avgPerDay} formatter={(value) => formatMoney(value, mainSummary.currency)} />}
                                 </p>
                                 {avgTrend.isUp !== null ? (
                                     <p
@@ -377,7 +417,7 @@ export default function DashboardPage() {
                                     className={`text-xl font-bold font-[family-name:var(--font-sora)] ${projectedBalance >= 0 ? 'text-[#1B2A22]' : 'text-[#E07A5F]'
                                         }`}
                                 >
-                                    <AnimatedNumber value={projectedBalance} formatter={(value) => formatMoney(value, mainSummary.currency)} />
+                                    {summaryLoading ? <span className="inline-block h-6 w-32 rounded bg-gray-200 skeleton-pulse" /> : <AnimatedNumber value={projectedBalance} formatter={(value) => formatMoney(value, mainSummary.currency)} />}
                                 </p>
                                 <p className="text-xs text-gray-400 mt-1">
                                     {isCurrentMonth
@@ -392,7 +432,9 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-6 mb-6">
                         <div className="bg-white rounded-2xl shadow-sm p-6">
                             <CardHeader icon={PieChartIcon} title="Pengeluaran per Kategori" />
-                            {categoryData.length === 0 ? (
+                            {categoryLoading ? (
+                                <WidgetSkeleton className="h-64" />
+                            ) : categoryData.length === 0 ? (
                                 <p className="text-sm text-gray-400">Belum ada data pengeluaran bulan ini.</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -452,7 +494,9 @@ export default function DashboardPage() {
 
                         <div className="bg-white rounded-2xl shadow-sm p-6">
                             <CardHeader icon={Target} title="Status Budget" />
-                            {combinedBudgets.length === 0 ? (
+                            {budgetLoading ? (
+                                <WidgetSkeleton className="h-64" />
+                            ) : combinedBudgets.length === 0 ? (
                                 <div>
                                     <p className="text-sm text-gray-400 mb-2">Belum ada budget diset bulan ini.</p>
                                     <Link href="/budgets" className="text-sm text-[#76C457] font-medium hover:underline">
@@ -507,7 +551,7 @@ export default function DashboardPage() {
                         {[3, 6, 12].map((m) => (
                             <button
                                 key={m}
-                                onClick={() => setTrendMonths(m)}
+                                onClick={() => changeTrendMonths(m)}
                                 className={`text-xs px-3 py-1.5 rounded-full transition-colors ${trendMonths === m ? 'bg-[#76C457] text-white font-medium' : 'text-gray-500 hover:bg-gray-50'
                                     }`}
                             >
@@ -516,24 +560,32 @@ export default function DashboardPage() {
                         ))}
                     </div>
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={trendData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                        <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-                        <Tooltip formatter={(v) => formatMoney(Number(v), 'IDR')} />
-                        <Legend />
-                        <Line type="monotone" dataKey="income" stroke="#76C457" name="Pemasukan" strokeWidth={2} />
-                        <Line type="monotone" dataKey="expense" stroke="#E07A5F" name="Pengeluaran" strokeWidth={2} />
-                    </LineChart>
-                </ResponsiveContainer>
+                {trendLoading ? (
+                    <WidgetSkeleton className="h-[300px]" />
+                ) : trendError ? (
+                    <p className="h-[300px] flex items-center justify-center text-sm text-gray-400">{trendError}</p>
+                ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={trendData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                            <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                            <Tooltip formatter={(v) => formatMoney(Number(v), 'IDR')} />
+                            <Legend />
+                            <Line type="monotone" dataKey="income" stroke="#76C457" name="Pemasukan" strokeWidth={2} />
+                            <Line type="monotone" dataKey="expense" stroke="#E07A5F" name="Pengeluaran" strokeWidth={2} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
             </div>
 
             {/* Baris 4: Transaksi Terbaru - full width */}
-            {monthHasTransactions && (
+            {!summaryLoading && monthHasTransactions && (
                 <div className="bg-white rounded-2xl shadow-sm p-6">
                     <CardHeader icon={Receipt} title="Transaksi Terbaru" />
-                    {recentTransactions.length === 0 ? (
+                    {transactionsLoading ? (
+                        <WidgetSkeleton className="h-40" />
+                    ) : recentTransactions.length === 0 ? (
                         <p className="text-sm text-gray-400">Belum ada transaksi.</p>
                     ) : (
                         <div className="space-y-3">

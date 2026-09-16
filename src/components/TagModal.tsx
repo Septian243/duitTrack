@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Tag as TagIcon } from 'lucide-react';
 
 export default function TagModal({
@@ -42,8 +43,8 @@ export default function TagModal({
         onSaved(name.trim());
     }
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    return typeof document === 'undefined' ? null : createPortal((
+        <div className="modal-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
                 className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
@@ -99,5 +100,5 @@ export default function TagModal({
                 </div>
             </div>
         </div>
-    );
+    ), document.body);
 }

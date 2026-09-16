@@ -17,18 +17,12 @@ export default async function DashboardLayout({
         redirect('/login');
     }
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('username, avatar_url')
-        .eq('id', user.id)
-        .single();
-
     return (
         <ToastProvider>
             <DashboardShell
-                userName={profile?.username ?? null}
+                userName={null}
                 userId={user.id}
-                userAvatarUrl={profile?.avatar_url ?? null}
+                userAvatarUrl={null}
             >
                 {children}
             </DashboardShell>
