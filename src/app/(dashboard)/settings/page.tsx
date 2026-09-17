@@ -417,6 +417,7 @@ export default function SettingsPage() {
                 itemType="koneksi Telegram"
                 itemName={displayProfile.telegram_username ? `@${displayProfile.telegram_username}` : 'Telegram'}
                 consequence="Reminder harian, peringatan budget, dan ringkasan bulanan tidak akan terkirim sampai kamu menghubungkan Telegram lagi."
+                icon="disconnect"
                 confirmLabel="Ya, Putuskan"
                 confirmClassName="bg-[#F0444D] hover:bg-[#DB3740] shadow-[0_8px_18px_rgba(240,68,77,0.22)]"
                 onCancel={() => setDisconnectDialogOpen(false)}

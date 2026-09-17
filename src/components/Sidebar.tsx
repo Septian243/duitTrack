@@ -181,6 +181,7 @@ export default function Sidebar({
             itemName="DuitTrack"
             question="Yakin ingin keluar dari DuitTrack?"
             consequence="Kamu bisa masuk lagi kapan saja menggunakan email dan password yang sama."
+            icon="logout"
             confirmLabel="Ya, Keluar"
             confirmClassName="bg-[#F0444D] hover:bg-[#DB3740] shadow-[0_8px_18px_rgba(240,68,77,0.22)]"
             onCancel={() => setLogoutDialogOpen(false)}
