@@ -195,7 +195,7 @@ export default function AuthCard({ initialMode }: { initialMode: Mode }) {
     const hint = usernameHint[usernameStatus];
 
     return (
-        <div className="relative mx-auto my-12 min-h-[600px] w-full max-w-4xl overflow-hidden rounded-[20px] bg-white shadow-2xl max-md:my-0 max-md:min-h-screen max-md:max-w-none max-md:rounded-none max-md:shadow-none">
+        <div className="auth-page-enter relative mx-auto my-12 min-h-[600px] w-full max-w-4xl overflow-hidden rounded-[20px] bg-white shadow-2xl max-md:my-0 max-md:min-h-screen max-md:max-w-none max-md:rounded-none max-md:shadow-none">
             {/* Sign Up form */}
             <div
                 className={`absolute top-0 left-0 w-1/2 h-full transition-all duration-[600ms] ease-in-out

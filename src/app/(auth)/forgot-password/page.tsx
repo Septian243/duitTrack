@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
 
     return (
         <main className="flex min-h-screen items-center justify-center px-4 py-8">
-        <div className="relative w-full max-w-md overflow-hidden rounded-[20px] bg-white shadow-2xl max-md:max-w-none max-md:rounded-none max-md:shadow-none">
+        <div className="auth-page-enter relative w-full max-w-md overflow-hidden rounded-[20px] bg-white shadow-2xl max-md:max-w-none max-md:rounded-none max-md:shadow-none">
             <div className="flex flex-col items-center justify-center px-10 py-8 text-center max-md:px-6">
                 <Image src="/logo.png" alt="DuitTrack" width={160} height={160} loading="eager" className="mb-[-12px]" />
 
